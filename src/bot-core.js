@@ -1,0 +1,193 @@
+/**
+ * bot-core.js — Layer 1: bot lifecycle, reconnect, state
+ */
+const mineflayer = require('mineflayer');
+const EventEmitter = require('events');
+
+class BotCore extends EventEmitter {
+  constructor(config) {
+    super();
+    this.config = config;
+    this.bot = null;
+    this.state = {
+      connected: false,
+      spawned: false,
+      reconnecting: false,
+    };
+    this._reconnectAttempts = 0;
+    this._reconnectTimer = null;
+  }
+
+  /**
+   * Create and connect the bot
+   */
+  connect() {
+    if (this.bot) {
+      this.disconnect();
+    }
+
+    this.state.reconnecting = false;
+    this._reconnectAttempts = 0;
+
+    this._createBot();
+  }
+
+  /**
+   * Disconnect the bot
+   */
+  disconnect() {
+    clearTimeout(this._reconnectTimer);
+    this.state.reconnecting = false;
+
+    if (this.bot) {
+      // Remove listeners before quit to prevent auto-reconnect
+      this.bot.removeAllListeners('end');
+      this.bot.removeAllListeners('kicked');
+      if (typeof this.bot.quit === 'function') {
+        this.bot.quit();
+      }
+      this.bot = null;
+    }
+
+    this.state.connected = false;
+    this.state.spawned = false;
+    this.emit('disconnected', { reason: 'manual' });
+  }
+
+  /**
+   * Internal bot creation
+   */
+  _createBot() {
+    const mcConfig = {
+      host: this.config.mc.host,
+      port: this.config.mc.port,
+      username: this.config.mc.username,
+      auth: this.config.mc.auth,
+    };
+
+    // If version is specified, set it explicitly; otherwise — auto-detect
+    if (this.config.mc.version) {
+      mcConfig.version = this.config.mc.version;
+    }
+
+    console.log(`[BotCore] Connecting to ${mcConfig.host}:${mcConfig.port} as ${mcConfig.username}...`);
+    this.bot = mineflayer.createBot(mcConfig);
+
+    // --- Patch bot.lookAt and bot.look to prevent NaN coordinates corruption ---
+    // (mineflayer-pvp and other plugins can sometimes pass undefined target.height resulting in NaN)
+    const originalLookAt = this.bot.lookAt;
+    this.bot.lookAt = function (point, force) {
+      if (!point || Number.isNaN(point.x) || Number.isNaN(point.y) || Number.isNaN(point.z)) {
+        console.error('[BotCore] ⚠️ Prevented lookAt with NaN coordinates:', point);
+        return Promise.resolve();
+      }
+      return originalLookAt.call(this, point, force);
+    };
+
+    const originalLook = this.bot.look;
+    this.bot.look = function (yaw, pitch, force) {
+      if (Number.isNaN(yaw) || Number.isNaN(pitch)) {
+        console.error('[BotCore] ⚠️ Prevented look with NaN angles:', yaw, pitch);
+        return Promise.resolve();
+      }
+      return originalLook.call(this, yaw, pitch, force);
+    };
+
+    let isFirstSpawn = true;
+
+    // --- Event: bot appeared in the world ---
+    this.bot.on('spawn', () => {
+      this.state.spawned = true;
+      if (isFirstSpawn) {
+        console.log(`[BotCore] ✅ Bot ${this.config.mc.username} spawned in the world`);
+        this.state.connected = true;
+        this.state.reconnecting = false;
+        this._reconnectAttempts = 0;
+        this.emit('spawned', this.bot);
+        isFirstSpawn = false;
+      } else {
+        console.log(`[BotCore] 👼 Bot respawned`);
+        this.emit('respawned');
+      }
+    });
+
+    this.bot.on('death', () => {
+      console.log('[BotCore] 💀 Bot died! Auto-respawn in 1 second...');
+      this.state.spawned = false;
+      setTimeout(() => {
+        if (this.bot && this.bot.respawn) {
+          this.bot.respawn();
+        }
+      }, 1000);
+    });
+
+    // --- Event: kick from server ---
+    this.bot.on('kicked', (reason, loggedIn) => {
+      console.log(`[BotCore] ⛔ Kick: ${reason} (loggedIn: ${loggedIn})`);
+      this.state.connected = false;
+      this.state.spawned = false;
+      this.emit('kicked', { reason, loggedIn });
+      this._tryReconnect('kicked');
+    });
+
+    // --- Event: disconnection ---
+    this.bot.on('end', (reason) => {
+      console.log(`[BotCore] 🔌 Disconnection: ${reason}`);
+      this.state.connected = false;
+      this.state.spawned = false;
+      this.emit('ended', { reason });
+      this._tryReconnect(reason);
+    });
+
+    // --- Event: error ---
+    this.bot.on('error', (err) => {
+      console.error(`[BotCore] ❌ Error: ${err.message}`);
+      this.emit('botError', err);
+    });
+
+    // --- Event: chat message ---
+    this.bot.on('chat', (username, message) => {
+      this.emit('chat', { username, message });
+    });
+  }
+
+  /**
+   * Auto-reconnect with exponential backoff
+   */
+  _tryReconnect(reason) {
+    if (!this.config.autoReconnect) {
+      console.log('[BotCore] Auto-reconnect disabled');
+      return;
+    }
+
+    if (this._reconnectAttempts >= this.config.maxReconnectAttempts) {
+      console.log(`[BotCore] ❌ Exceeded max reconnect attempts (${this.config.maxReconnectAttempts})`);
+      this.emit('reconnectFailed');
+      return;
+    }
+
+    this._reconnectAttempts++;
+    this.state.reconnecting = true;
+
+    // Exponential backoff: delay * 2^(attempt-1), but not more than 60s
+    const delay = Math.min(
+      this.config.reconnectDelay * Math.pow(2, this._reconnectAttempts - 1),
+      60000
+    );
+
+    console.log(`[BotCore] 🔄 Reconnecting in ${delay / 1000}s (attempt ${this._reconnectAttempts}/${this.config.maxReconnectAttempts})...`);
+
+    this._reconnectTimer = setTimeout(() => {
+      this._createBot();
+    }, delay);
+  }
+
+  /**
+   * Check if bot is ready
+   */
+  isReady() {
+    return this.bot && this.state.connected && this.state.spawned;
+  }
+}
+
+module.exports = BotCore;
