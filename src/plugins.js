@@ -12,16 +12,12 @@ let viewerRunning = false;
 function loadPlugins(bot, config) {
   // --- Mandatory: pathfinder ---
   try {
-    const { pathfinder, Movements } = require('mineflayer-pathfinder');
+    const { pathfinder } = require('mineflayer-pathfinder');
     bot.loadPlugin(pathfinder);
-
-    // Initialize global movements right after loading the plugin
-    const mcData = require('minecraft-data')(bot.version);
-    const movements = new Movements(bot, mcData);
-    movements.canOpenDoors = false; // Doors are unreliable
-    bot.pathfinder.setMovements(movements);
-
+    // Movements will be initialized lazily on first use in navigation-utils.js
+    // (bot.registry is not guaranteed to be set synchronously at spawn time)
     console.log('[Plugins] ✅ mineflayer-pathfinder loaded');
+
   } catch (err) {
     console.error('[Plugins] ❌ Failed to load pathfinder:', err.message);
     throw err; // pathfinder is mandatory — MVP won't work without it
