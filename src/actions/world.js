@@ -239,10 +239,47 @@ function createWorldActions(bot) {
 
       console.log(`[World] Placing ${name} on ${referenceBlock.name} at (${x}, ${y}, ${z})`);
 
-      // 2. Look at placement point
+      // 2. Approach if too far
+      const dist = pos.distanceTo(bot.entity.position);
+      if (dist > 4.5) {
+        const { goals: { GoalNear } } = require('mineflayer-pathfinder');
+        await new Promise((resolve, reject) => {
+          let onPathUpdate;
+          let onGoalReached;
+
+          const onAbort = () => {
+            bot.pathfinder.setGoal(null);
+            bot.removeListener('path_update', onPathUpdate);
+            bot.removeListener('goal_reached', onGoalReached);
+            reject(new Error('Cancelled'));
+          };
+
+          onGoalReached = () => {
+            if (signal) signal.removeEventListener('abort', onAbort);
+            bot.removeListener('path_update', onPathUpdate);
+            resolve();
+          };
+
+          onPathUpdate = (results) => {
+            if (results.status === 'noPath') {
+              if (signal) signal.removeEventListener('abort', onAbort);
+              bot.removeListener('goal_reached', onGoalReached);
+              bot.pathfinder.setGoal(null);
+              reject(new Error(`No path found to place block at ${x}, ${y}, ${z}`));
+            }
+          };
+
+          if (signal) signal.addEventListener('abort', onAbort, { once: true });
+          bot.once('goal_reached', onGoalReached);
+          bot.once('path_update', onPathUpdate);
+          bot.pathfinder.setGoal(new GoalNear(x, y, z, 3));
+        });
+      }
+
+      // 3. Look at placement point
       await bot.lookAt(pos, true);
 
-      // 3. Equip and place
+      // 4. Equip and place
       await bot.equip(item, 'hand');
       await bot.placeBlock(referenceBlock, faceVector);
 
