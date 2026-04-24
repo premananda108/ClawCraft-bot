@@ -120,7 +120,15 @@ function createCombatActions(bot) {
             return;
           }
 
+          // Do nothing if bot is dead or not fully spawned
+          if (!bot.entity || bot.health <= 0 || bot.isDead) {
+            if (bot.pvp) bot.pvp.stop();
+            if (bot.pathfinder) bot.pathfinder.setGoal(null);
+            return;
+          }
+
           const pEntity = bot.players[targetPlayerName]?.entity;
+
 
           // 1. Look for threats around the PLAYER and around the BOT
           const hostileNearPlayer = pEntity ? findHostileNear(pEntity.position, 16) : null;

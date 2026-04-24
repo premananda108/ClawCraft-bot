@@ -131,21 +131,29 @@ class BotCore extends EventEmitter {
     });
 
     this.bot.on('death', () => {
-      console.log('[BotCore] 💀 Bot died! Auto-respawn in 1 second...');
+      console.log('[BotCore] 💀 Bot died! Waiting for mineflayer auto-respawn...');
       this.state.spawned = false;
-      setTimeout(() => {
-        if (this.bot && this.bot.respawn) {
-          this.bot.respawn();
-        }
-      }, 1000);
+      // Note: We do NOT call bot.respawn() manually because mineflayer does it
+      // automatically by default. Calling it twice glitches the server and
+      // causes infinite death/respawn loops.
     });
 
     // --- Event: kick from server ---
     this.bot.on('kicked', (reason, loggedIn) => {
-      console.log(`[BotCore] ⛔ Kick: ${reason} (loggedIn: ${loggedIn})`);
+      let reasonStr = '';
+      if (typeof reason === 'string') {
+        reasonStr = reason;
+      } else {
+        try {
+          reasonStr = JSON.stringify(reason);
+        } catch (e) {
+          reasonStr = String(reason);
+        }
+      }
+      console.log(`[BotCore] ⛔ Kick: ${reasonStr} (loggedIn: ${loggedIn})`);
       this.state.connected = false;
       this.state.spawned = false;
-      this.emit('kicked', { reason, loggedIn });
+      this.emit('kicked', { reason: reasonStr, loggedIn });
       this._tryReconnect('kicked');
     });
 
