@@ -38,7 +38,8 @@ function createCombatActions(bot) {
    */
   function findHostileNear(position, radius = 16) {
     return bot.nearestEntity(e => {
-      if (!e || e.type !== 'mob') return false;
+      if (!e || !e.isValid || !['mob', 'hostile'].includes(e.type)) return false;
+      if (Math.abs(e.position.y - position.y) > 5) return false; // Ignore mobs in caves below or on roofs above
       if (e.position.distanceTo(position) > radius) return false;
       return HOSTILE_MOBS.includes(e.name.toLowerCase());
     });
@@ -143,6 +144,7 @@ function createCombatActions(bot) {
             const isFollowing = currentGoal && currentGoal.entity === pEntity;
 
             if (!isFollowing) {
+              console.log(`[Combat] Following ${targetPlayerName}...`);
               bot.pathfinder.setGoal(new GoalFollow(pEntity, 2), true);
             }
           }

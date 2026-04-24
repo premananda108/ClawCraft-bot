@@ -139,7 +139,7 @@ async function main() {
       // Check nearby threats
       const nearbyR = await get('/nearby?radius=16');
       const ents = nearbyR.body?.data?.entities || [];
-      const mobs = ents.filter(e => e.type === 'mob');
+      const mobs = ents.filter(e => e.type === 'mob' || e.type === 'hostile');
 
       const timeOfDay = s?.time?.timeOfDay;
       const isNight = timeOfDay > 13000 && timeOfDay < 23000;

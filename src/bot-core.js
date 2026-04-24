@@ -93,6 +93,25 @@ class BotCore extends EventEmitter {
       return originalLook.call(this, yaw, pitch, force);
     };
 
+    let lastValidPos = null;
+    this.bot.on('physicTick', () => {
+      const e = this.bot.entity;
+      if (!e || !e.position || !e.velocity) return;
+
+      if (Number.isNaN(e.position.x) || Number.isNaN(e.position.y) || Number.isNaN(e.position.z)) {
+        if (lastValidPos) {
+          e.position.set(lastValidPos.x, lastValidPos.y, lastValidPos.z);
+          e.velocity.set(0, 0, 0);
+        }
+      } else {
+        lastValidPos = e.position.clone();
+      }
+
+      if (Number.isNaN(e.velocity.x) || Number.isNaN(e.velocity.y) || Number.isNaN(e.velocity.z)) {
+        e.velocity.set(0, 0, 0);
+      }
+    });
+
     let isFirstSpawn = true;
 
     // --- Event: bot appeared in the world ---
