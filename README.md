@@ -95,7 +95,6 @@ server.js              ← Entry point (launches bot + bridge API)
 │   ├── world.js       ← interaction with blocks (dig, collect, place, activate)
 │   ├── combat.js      ← combat and protection
 │   ├── items.js       ← item management, crafting, equipment
-│   ├── visual.js      ← visual functions (screenshots)
 │   └── index.js       ← Registry and routing for all actions
 ├── src/bridge-api.js  ← Layer 4: HTTP API (Express wrapper for OpenClaw)
 └── skills/            ← Layer 5: OpenClaw skill
