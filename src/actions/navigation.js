@@ -8,6 +8,7 @@ const {
   Movements,
   goals: { GoalBlock, GoalNear, GoalFollow },
 } = require('mineflayer-pathfinder');
+const { pathfinderGoto } = require('./navigation-utils');
 
 /**
  * @param {import('mineflayer').Bot} bot
@@ -33,45 +34,17 @@ function createNavigationActions(bot) {
       }
 
       const goal = new GoalBlock(Math.floor(x), Math.floor(y), Math.floor(z));
+      await pathfinderGoto(bot, goal, signal);
 
-      return new Promise((resolve, reject) => {
-        // On abort — stop pathfinder and clean up listeners
-        const onAbort = () => {
-          bot.pathfinder.setGoal(null);
-          bot.removeListener('goal_reached', onGoalReached);
-          bot.removeListener('path_update', onPathUpdate);
-          reject(new Error('Cancelled'));
-        };
-
-        const onGoalReached = () => {
-          signal.removeEventListener('abort', onAbort);
-          bot.removeListener('path_update', onPathUpdate);
-          const pos = bot.entity.position;
-          resolve({
-            arrived: true,
-            position: {
-              x: Math.round(pos.x * 100) / 100,
-              y: Math.round(pos.y * 100) / 100,
-              z: Math.round(pos.z * 100) / 100,
-            },
-          });
-        };
-
-        const onPathUpdate = (results) => {
-          if (results.status === 'noPath') {
-            signal.removeEventListener('abort', onAbort);
-            bot.removeListener('goal_reached', onGoalReached);
-            bot.pathfinder.setGoal(null);
-            reject(new Error('No path found to target'));
-          }
-        };
-
-        signal.addEventListener('abort', onAbort, { once: true });
-        bot.once('goal_reached', onGoalReached);
-        bot.once('path_update', onPathUpdate);
-
-        bot.pathfinder.setGoal(goal);
-      });
+      const pos = bot.entity.position;
+      return {
+        arrived: true,
+        position: {
+          x: Math.round(pos.x * 100) / 100,
+          y: Math.round(pos.y * 100) / 100,
+          z: Math.round(pos.z * 100) / 100,
+        },
+      };
     },
 
     /**

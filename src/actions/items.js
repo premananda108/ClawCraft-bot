@@ -114,38 +114,9 @@ function createItemActions(bot) {
         // Approach the crafting table if necessary
         const dist = tableBlock.position.distanceTo(bot.entity.position);
         if (dist > 4) {
-          const { goals: { GoalBlock } } = require('mineflayer-pathfinder');
-          await new Promise((resolve, reject) => {
-            let onPathUpdate;
-            let onGoalReached;
-
-            const onAbort = () => {
-              bot.pathfinder.setGoal(null);
-              bot.removeListener('path_update', onPathUpdate);
-              bot.removeListener('goal_reached', onGoalReached);
-              reject(new Error('Cancelled'));
-            };
-
-            onGoalReached = () => {
-              signal.removeEventListener('abort', onAbort);
-              bot.removeListener('path_update', onPathUpdate);
-              resolve();
-            };
-
-            onPathUpdate = (results) => {
-              if (results.status === 'noPath') {
-                signal.removeEventListener('abort', onAbort);
-                bot.removeListener('goal_reached', onGoalReached);
-                bot.pathfinder.setGoal(null);
-                reject(new Error('No path found to crafting table'));
-              }
-            };
-
-            signal.addEventListener('abort', onAbort, { once: true });
-            bot.once('goal_reached', onGoalReached);
-            bot.once('path_update', onPathUpdate);
-            bot.pathfinder.setGoal(new GoalBlock(tableBlock.position.x, tableBlock.position.y, tableBlock.position.z));
-          });
+          const { goals: { GoalNear } } = require('mineflayer-pathfinder');
+          const { pathfinderGoto } = require('./navigation-utils');
+          await pathfinderGoto(bot, new GoalNear(tableBlock.position.x, tableBlock.position.y, tableBlock.position.z, 3), signal);
         }
         craftingTable = tableBlock;
       }

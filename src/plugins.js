@@ -16,7 +16,8 @@ function loadPlugins(bot, config) {
     bot.loadPlugin(pathfinder);
 
     // Initialize global movements right after loading the plugin
-    const movements = new Movements(bot);
+    const mcData = require('minecraft-data')(bot.version);
+    const movements = new Movements(bot, mcData);
     movements.canOpenDoors = false; // Doors are unreliable
     bot.pathfinder.setMovements(movements);
 
