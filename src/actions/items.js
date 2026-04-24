@@ -103,10 +103,11 @@ function createItemActions(bot) {
       let craftingTable = null;
 
       if (useCraftingTable) {
-        // Find the nearest crafting table
+        // Find the nearest crafting table on a reachable level
         const tableBlock = bot.findBlock({
           matching: mcData.blocksByName['crafting_table'].id,
-          maxDistance: 32,
+          maxDistance: 16,
+          use: (block) => Math.abs(block.position.y - bot.entity.position.y) <= 3
         });
         if (!tableBlock) throw new Error('No crafting table found within 32 blocks');
 

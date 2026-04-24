@@ -237,6 +237,14 @@ function createWorldActions(bot) {
         throw new Error(`CRITICAL_ERROR_PLACING_BLOCK at (${x}, ${y}, ${z})`);
       }
 
+      // Prevent suffocation (placing block on self)
+      const botX = Math.floor(bot.entity.position.x);
+      const botY = Math.floor(bot.entity.position.y);
+      const botZ = Math.floor(bot.entity.position.z);
+      if (Math.floor(x) === botX && Math.floor(z) === botZ && (Math.floor(y) === botY || Math.floor(y) === botY + 1)) {
+        throw new Error(`Cannot place block at (${x}, ${y}, ${z}) - bot is standing there!`);
+      }
+
       console.log(`[World] Placing ${name} on ${referenceBlock.name} at (${x}, ${y}, ${z})`);
 
       // 2. Approach if too far
