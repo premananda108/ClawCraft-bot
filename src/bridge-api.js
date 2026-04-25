@@ -54,6 +54,28 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
     };
   }
 
+  // --- Validation Helpers ---
+  function parseRequiredNumber(val, name) {
+    if (val === undefined || val === null) throw new Error(`Required: ${name}`);
+    const num = Number(val);
+    if (Number.isNaN(num)) throw new Error(`Invalid number: ${name}`);
+    return num;
+  }
+
+  function parseOptionalNumber(val, defaultVal = undefined) {
+    if (val === undefined || val === null) return defaultVal;
+    const num = Number(val);
+    if (Number.isNaN(num)) return defaultVal;
+    return num;
+  }
+
+  function parsePositiveInt(val, defaultVal = undefined) {
+    if (val === undefined || val === null) return defaultVal;
+    const num = parseInt(val, 10);
+    if (Number.isNaN(num) || num <= 0) return defaultVal;
+    return num;
+  }
+
   // =====================================================
   // Health (always available)
   // =====================================================
@@ -78,60 +100,55 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   app.get('/inventory', requireBot, safeCall(() => actions.readOnlyActions.inventory()));
 
   app.get('/nearby', requireBot, safeCall((req) => {
-    const radius = req.query.radius ? parseInt(req.query.radius, 10) : undefined;
-    return actions.readOnlyActions.nearby({ radius });
+    return actions.readOnlyActions.nearby({
+      radius: parsePositiveInt(req.query.radius),
+    });
   }));
 
   app.get('/scan-blocks', requireBot, safeCall((req) => {
-    const radius = req.query.radius ? parseInt(req.query.radius, 10) : undefined;
-    return actions.readOnlyActions.scan({ radius });
+    return actions.readOnlyActions.scan({
+      radius: parsePositiveInt(req.query.radius),
+    });
   }));
 
   app.get('/findblock', requireBot, safeCall((req) => {
-    const { name, maxDistance, count } = req.query;
     return actions.readOnlyActions.findBlock({
-      name,
-      maxDistance: maxDistance ? parseInt(maxDistance, 10) : undefined,
-      count: count ? parseInt(count, 10) : undefined,
+      name: req.query.name,
+      maxDistance: parsePositiveInt(req.query.maxDistance),
+      count: parsePositiveInt(req.query.count),
     });
   }));
 
   // =====================================================
   // Navigation (queued)
   // =====================================================
-  app.post('/actions/goto', requireBot, (req, res) => {
-    const { x, y, z } = req.body;
-    if (x === undefined || y === undefined || z === undefined) {
-      return res.status(400).json({ ok: false, error: 'Required: x, y, z' });
-    }
-    const { jobId } = jobQueue.enqueue('goto', { x, y, z }, actions.queuedActions.goto);
-    res.json({ ok: true, data: { jobId, action: 'goto', params: { x, y, z } } });
-  });
+  app.post('/actions/goto', requireBot, enqueueAction('goto', (req) => ({
+    x: parseRequiredNumber(req.body.x, 'x'),
+    y: parseRequiredNumber(req.body.y, 'y'),
+    z: parseRequiredNumber(req.body.z, 'z'),
+  })));
 
-  app.post('/actions/follow', requireBot, (req, res) => {
-    const { player, distance } = req.body;
-    if (!player) return res.status(400).json({ ok: false, error: 'Required: player' });
-    const { jobId } = jobQueue.enqueue('follow', { player, distance }, actions.queuedActions.follow);
-    res.json({ ok: true, data: { jobId, action: 'follow', params: { player, distance } } });
-  });
+  app.post('/actions/follow', requireBot, enqueueAction('follow', (req) => {
+    if (!req.body.player) throw new Error('Required: player');
+    return {
+      player: req.body.player,
+      distance: parseOptionalNumber(req.body.distance),
+    };
+  }));
 
   // =====================================================
   // Chat (queued)
   // =====================================================
-  app.post('/actions/chat', requireBot, (req, res) => {
-    const { message } = req.body;
-    if (!message) return res.status(400).json({ ok: false, error: 'Required: message' });
-    const { jobId } = jobQueue.enqueue('chat', { message }, actions.queuedActions.chat);
-    res.json({ ok: true, data: { jobId, action: 'chat', params: { message } } });
-  });
+  app.post('/actions/chat', requireBot, enqueueAction('chat', (req) => {
+    if (!req.body.message) throw new Error('Required: message');
+    return { message: req.body.message };
+  }));
 
-  app.post('/actions/whisper', requireBot, (req, res) => {
-    const { player, message } = req.body;
-    if (!player) return res.status(400).json({ ok: false, error: 'Required: player' });
-    if (!message) return res.status(400).json({ ok: false, error: 'Required: message' });
-    const { jobId } = jobQueue.enqueue('whisper', { player, message }, actions.queuedActions.whisper);
-    res.json({ ok: true, data: { jobId, action: 'whisper', params: { player, message } } });
-  });
+  app.post('/actions/whisper', requireBot, enqueueAction('whisper', (req) => {
+    if (!req.body.player) throw new Error('Required: player');
+    if (!req.body.message) throw new Error('Required: message');
+    return { player: req.body.player, message: req.body.message };
+  }));
 
   // =====================================================
   // Combat (queued)
@@ -143,13 +160,38 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   // =====================================================
   // World (queued)
   // =====================================================
-  app.post('/actions/dig', requireBot, enqueueAction('digBlock'));
+  app.post('/actions/dig', requireBot, enqueueAction('digBlock', (req) => {
+    const p = { name: req.body.name, maxDistance: parsePositiveInt(req.body.maxDistance) };
+    if (req.body.x !== undefined) p.x = parseRequiredNumber(req.body.x, 'x');
+    if (req.body.y !== undefined) p.y = parseRequiredNumber(req.body.y, 'y');
+    if (req.body.z !== undefined) p.z = parseRequiredNumber(req.body.z, 'z');
+    return p;
+  }));
 
-  app.post('/actions/collect', requireBot, enqueueAction('collectBlock'));
+  app.post('/actions/collect', requireBot, enqueueAction('collectBlock', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return {
+      name: req.body.name,
+      count: parsePositiveInt(req.body.count),
+      maxDistance: parsePositiveInt(req.body.maxDistance),
+    };
+  }));
 
-  app.post('/actions/activate-block', requireBot, enqueueAction('activateBlock'));
+  app.post('/actions/activate-block', requireBot, enqueueAction('activateBlock', (req) => ({
+    x: parseRequiredNumber(req.body.x, 'x'),
+    y: parseRequiredNumber(req.body.y, 'y'),
+    z: parseRequiredNumber(req.body.z, 'z'),
+  })));
 
-  app.post('/actions/place-block', requireBot, enqueueAction('placeBlock'));
+  app.post('/actions/place-block', requireBot, enqueueAction('placeBlock', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return {
+      name: req.body.name,
+      x: parseRequiredNumber(req.body.x, 'x'),
+      y: parseRequiredNumber(req.body.y, 'y'),
+      z: parseRequiredNumber(req.body.z, 'z'),
+    };
+  }));
 
   // =====================================================
   // Items (queued)
@@ -223,7 +265,7 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
           'POST /actions/dig         { name } or { x, y, z }',
           'POST /actions/collect     { name, count?, maxDistance? }',
           'POST /actions/activate-block { x, y, z }',
-          'POST /actions/place-block    { x, y, z, face? }',
+          'POST /actions/place-block    { x, y, z, name }',
         ],
         items: [
           'POST /actions/equip       { name, destination? }',
