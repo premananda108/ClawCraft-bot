@@ -77,20 +77,20 @@ function createCombatActions(bot) {
             if (signal?.aborted) {
               bot.pvp.stop();
               clearInterval(checkTask);
-              resolve({ ok: false, error: 'Cancelled' });
+              resolve({ attacked: false, target: target.username || target.name, reason: 'cancelled' });
             }
             // If the target is dead or has disappeared
             if (!target.isValid || target.health <= 0) {
               bot.pvp.stop();
               clearInterval(checkTask);
-              resolve({ ok: true, result: 'Target defeated' });
+              resolve({ attacked: true, target: target.username || target.name, outcome: 'Target defeated' });
             }
           }, 500);
         });
       } else {
         // Fallback if the plugin is not loaded
         bot.attack(target);
-        return { ok: true, result: 'Attacked once (no PVP plugin)' };
+        return { attacked: true, target: target.username || target.name, outcome: 'Attacked once (no PVP plugin)' };
       }
     },
 
@@ -116,7 +116,7 @@ function createCombatActions(bot) {
             if (bot.pathfinder) bot.pathfinder.setGoal(null);
             clearInterval(protectionInterval);
             protectionInterval = null;
-            resolve({ ok: true, result: 'Protection stopped' });
+            resolve({ protecting: false, player: targetPlayerName, reason: 'stopped' });
             return;
           }
 
@@ -169,8 +169,8 @@ function createCombatActions(bot) {
         protectionInterval = null;
       }
       if (bot.pvp) bot.pvp.stop();
-      bot.pathfinder.setGoal(null);
-      return { ok: true };
+      if (bot.pathfinder) bot.pathfinder.setGoal(null);
+      return { combatStopped: true };
     }
   };
 }

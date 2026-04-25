@@ -53,7 +53,18 @@ function createActions(bot) {
 
   // --- Immediate actions (executed instantly, bypassing the queue) ---
   const immediateActions = {
-    stop: navigation.stopAll,
+    stop: async () => {
+      const results = {};
+      
+      try { results.navigation = await navigation.stopAll(); } catch (e) {}
+      try { results.combat = await combat.stopCombat(); } catch (e) {}
+      
+      if (bot && typeof bot.stopDigging === 'function') {
+        try { bot.stopDigging(); results.world = { diggingStopped: true }; } catch (e) {}
+      }
+
+      return { stopped: true, details: results };
+    },
   };
 
   // --- Read-only actions (no side effects, bypassing the queue) ---

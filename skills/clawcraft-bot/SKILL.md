@@ -119,7 +119,7 @@ Use these pacing rules:
 - after starting any POST action: wait about **1.0 second** before first poll
 - while polling a job: poll every **1.0 to 1.5 seconds**
 - after a job finishes: wait about **0.5 to 1.0 seconds** before next action
-- after `stop`, `consume`, or `respawn`: wait about **1.0 to 2.0 seconds** before re-checking state
+- after `stop` or `consume`: wait about **1.0 to 2.0 seconds** before re-checking state
 
 Never send multiple POST actions back-to-back while a previous action is still active.
 
