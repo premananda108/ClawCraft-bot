@@ -33,15 +33,14 @@ function createCombatActions(bot) {
     }
   });
 
-  /**
-   * Find the nearest hostile mob
-   */
   function findHostileNear(position, radius = 16) {
     return bot.nearestEntity(e => {
-      if (!e || !e.isValid || !['mob', 'hostile'].includes(e.type)) return false;
-      if (Math.abs(e.position.y - position.y) > 5) return false; // Ignore mobs in caves below or on roofs above
+      if (!e || !e.isValid) return false;
+      const eName = e.name || e.username;
+      if (!eName) return false;
+      if (Math.abs(e.position.y - position.y) > 10) return false; // Ignore mobs in caves below or on roofs above
       if (e.position.distanceTo(position) > radius) return false;
-      return HOSTILE_MOBS.includes(e.name.toLowerCase());
+      return HOSTILE_MOBS.includes(eName.toLowerCase());
     });
   }
 
