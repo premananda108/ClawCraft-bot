@@ -21,13 +21,22 @@ const HOSTILE_MOBS = [
 function createCombatActions(bot) {
   let protectionInterval = null;
   let targetPlayerName = null;
+  let protectionResolve = null;
 
-  // Clean up on bot disconnect to prevent calling methods on a dead bot instance
-  bot.once('end', () => {
+  function _stopProtection(reason = 'stopped') {
     if (protectionInterval) {
       clearInterval(protectionInterval);
       protectionInterval = null;
     }
+    if (protectionResolve) {
+      protectionResolve({ protecting: false, player: targetPlayerName, reason });
+      protectionResolve = null;
+    }
+  }
+
+  // Clean up on bot disconnect to prevent calling methods on a dead bot instance
+  bot.once('end', () => {
+    _stopProtection('disconnected');
     if (bot.pvp) {
       try { bot.pvp.stop(); } catch (_) { /* ignore */ }
     }
@@ -106,16 +115,13 @@ function createCombatActions(bot) {
       console.log(`[Combat] Player protection mode: ${name}`);
 
       // Stop previous protection if it existed
-      if (protectionInterval) clearInterval(protectionInterval);
+      _stopProtection('superseded');
 
       return new Promise((resolve) => {
+        protectionResolve = resolve;
         protectionInterval = setInterval(() => {
           if (signal?.aborted) {
-            if (bot.pvp) bot.pvp.stop();
-            if (bot.pathfinder) bot.pathfinder.setGoal(null);
-            clearInterval(protectionInterval);
-            protectionInterval = null;
-            resolve({ protecting: false, player: targetPlayerName, reason: 'stopped' });
+            _stopProtection('stopped');
             return;
           }
 
@@ -163,10 +169,7 @@ function createCombatActions(bot) {
      * Stop combat
      */
     async stopCombat() {
-      if (protectionInterval) {
-        clearInterval(protectionInterval);
-        protectionInterval = null;
-      }
+      _stopProtection('manual_stop');
       if (bot.pvp) bot.pvp.stop();
       if (bot.pathfinder) bot.pathfinder.setGoal(null);
       return { combatStopped: true };
