@@ -13,6 +13,7 @@
  */
 
 const vec3 = require('vec3');
+const { ensureMovements } = require('./navigation-utils');
 
 /**
  * @param {import('mineflayer').Bot} bot
@@ -243,6 +244,8 @@ function createWorldActions(bot) {
     async collectBlock(params, signal) {
       if (!bot) throw new Error('Bot not connected');
       if (!bot.collectBlock) throw new Error('collectBlock plugin not loaded');
+
+      ensureMovements(bot);
 
       const { name, count = 1, maxDistance = 32 } = params;
       if (!name) throw new Error('Required: name (block name, e.g. "oak_log")');
