@@ -101,15 +101,15 @@ class JobQueue {
     };
   }
 
-  /**
-   * Cancel current task + clear queue
-   */
   cancelAll() {
+    let hadRunningJob = false;
     // Cancel current
     if (this._currentAbort) {
+      hadRunningJob = true;
       this._currentAbort.abort();
     }
 
+    const pendingCleared = this.queue.length;
     // Mark all pending as cancelled
     for (const job of this.queue) {
       job.status = 'cancelled';
@@ -117,7 +117,7 @@ class JobQueue {
     }
     this.queue = [];
 
-    return { cancelled: true };
+    return { cancelled: true, pendingCleared, hadRunningJob };
   }
 
   /**
@@ -140,20 +140,33 @@ class JobQueue {
     const abortController = new AbortController();
     this._currentAbort = abortController;
 
-    // Execution timeout (30 seconds)
-    // Persistent actions (protect, follow, collectBlock) run until cancelled — no timeout
-    const isPersistent = ['protect', 'follow', 'collectBlock'].includes(job.action);
+    const TIMEOUTS = {
+      chat: 5000,
+      whisper: 5000,
+      equipItem: 5000,
+      setHotbarSlot: 5000,
+      tossItem: 5000,
+      goto: 60000,
+      digBlock: 45000,
+      craftItem: 45000,
+      collectBlock: 120000,
+      attack: 30000,
+      follow: null,
+      protect: null
+    };
+
+    const timeoutMs = TIMEOUTS[job.action] !== undefined ? TIMEOUTS[job.action] : 30000;
 
     try {
       let result;
-      if (isPersistent) {
+      if (timeoutMs === null) {
         // No timeout: run until AbortSignal fires
         result = await job._executorFn(job.params, abortController.signal);
       } else {
         const timeoutPromise = new Promise((_, reject) => {
           const timer = setTimeout(
-            () => reject(new Error(`Action ${job.action} timed out (30s)`)),
-            30000
+            () => reject(new Error(`Action ${job.action} timed out (${timeoutMs / 1000}s)`)),
+            timeoutMs
           );
           abortController.signal.addEventListener('abort', () => clearTimeout(timer));
         });
