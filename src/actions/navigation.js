@@ -82,6 +82,7 @@ function createNavigationActions(bot) {
         const onPlayerLeft = (leftPlayer) => {
           if (leftPlayer.username === player) {
             signal.removeEventListener('abort', onAbort);
+            bot.removeListener('playerLeft', onPlayerLeft);
             bot.pathfinder.setGoal(null);
             resolve({
               following: false,
