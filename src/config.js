@@ -40,9 +40,6 @@ const config = {
 };
 
 // Validation
-if (!config.mc.username) {
-  throw new Error('[Config] MC_USERNAME is required');
-}
 if (config.bridge.host !== '127.0.0.1' && config.bridge.host !== 'localhost') {
   console.warn('[Config] ⚠️  BRIDGE_HOST is not localhost — this exposes the API to the network!');
 }

@@ -1,6 +1,6 @@
 {
   "name": "clawcraft-bot",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Safe local Minecraft bot with high-level actions and bridge API for OpenClaw",
   "main": "server.js",
   "type": "commonjs",
