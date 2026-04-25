@@ -185,7 +185,7 @@ function createInfoActions(bot) {
       blocks.sort((a, b) => a.distance - b.distance);
 
       return {
-        blocks: blocks.slice(0, 50), // Return max 50
+        blocks: blocks.slice(0, 500), // Return max 500
         count: blocks.length,
         radius,
       };
