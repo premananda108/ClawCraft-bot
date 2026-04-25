@@ -22,6 +22,7 @@ class BotCore extends EventEmitter {
    * Create and connect the bot
    */
   connect() {
+    this._clearReconnectTimer();
     if (this.bot) {
       this.disconnect();
     }
@@ -36,7 +37,7 @@ class BotCore extends EventEmitter {
    * Disconnect the bot
    */
   disconnect() {
-    clearTimeout(this._reconnectTimer);
+    this._clearReconnectTimer();
     this.state.reconnecting = false;
 
     if (this.bot) {
@@ -188,9 +189,7 @@ class BotCore extends EventEmitter {
       return;
     }
 
-    if (this._reconnectTimer) {
-      clearTimeout(this._reconnectTimer);
-    }
+    this._clearReconnectTimer();
 
     if (this._reconnectAttempts >= this.config.maxReconnectAttempts) {
       console.log(`[BotCore] ❌ Exceeded max reconnect attempts (${this.config.maxReconnectAttempts})`);
@@ -210,8 +209,16 @@ class BotCore extends EventEmitter {
     console.log(`[BotCore] 🔄 Reconnecting in ${delay / 1000}s (attempt ${this._reconnectAttempts}/${this.config.maxReconnectAttempts})...`);
 
     this._reconnectTimer = setTimeout(() => {
+      this._reconnectTimer = null;
       this._createBot();
     }, delay);
+  }
+
+  _clearReconnectTimer() {
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
+      this._reconnectTimer = null;
+    }
   }
 
   /**
