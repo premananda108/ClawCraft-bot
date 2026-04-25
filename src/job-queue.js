@@ -124,7 +124,9 @@ class JobQueue {
    * Launch next task from queue
    */
   async _processNext() {
-    // If task is already running — wait
+    // If task is already running — wait.
+    // Note: This check and the subsequent shift() are safe from race conditions 
+    // because Node.js is single-threaded and they happen before the first await.
     if (this.currentJob) return;
 
     // Take next

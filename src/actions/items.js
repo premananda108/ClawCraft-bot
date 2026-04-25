@@ -123,22 +123,48 @@ function createItemActions(bot) {
       let craftingTable = null;
 
       if (useCraftingTable) {
-        // Find the nearest crafting table on a reachable level
-        const tableBlock = bot.findBlock({
+        // Find crafting tables within 32 blocks
+        const tablePositions = bot.findBlocks({
           matching: mcData.blocksByName['crafting_table'].id,
-          maxDistance: 16,
-          use: (block) => Math.abs(block.position.y - bot.entity.position.y) <= 3
+          maxDistance: 32,
+          count: 10
         });
-        if (!tableBlock) throw new Error('No crafting table found within 32 blocks');
 
-        // Approach the crafting table if necessary
-        const dist = tableBlock.position.distanceTo(bot.entity.position);
-        if (dist > 4) {
-          const { goals: { GoalNear } } = require('mineflayer-pathfinder');
-          const { pathfinderGoto } = require('./navigation-utils');
-          await pathfinderGoto(bot, new GoalNear(tableBlock.position.x, tableBlock.position.y, tableBlock.position.z, 3), signal);
+        if (tablePositions.length === 0) throw new Error('No crafting table found within 32 blocks');
+
+        // Sort by reachability heuristic: vertical distance first, then horizontal distance
+        const tables = tablePositions
+          .map(pos => bot.blockAt(pos))
+          .sort((a, b) => {
+            const dyA = Math.abs(a.position.y - bot.entity.position.y);
+            const dyB = Math.abs(b.position.y - bot.entity.position.y);
+            if (Math.abs(dyA - dyB) > 1) return dyA - dyB;
+            return a.position.distanceTo(bot.entity.position) - b.position.distanceTo(bot.entity.position);
+          });
+
+        // Try to reach and use one of the tables
+        let reached = false;
+        for (const table of tables) {
+          if (Math.abs(table.position.y - bot.entity.position.y) > 5) continue;
+
+          try {
+            const dist = table.position.distanceTo(bot.entity.position);
+            if (dist > 4) {
+              const { goals: { GoalNear } } = require('mineflayer-pathfinder');
+              const { pathfinderGoto } = require('./navigation-utils');
+              await pathfinderGoto(bot, new GoalNear(table.position.x, table.position.y, table.position.z, 3), signal);
+            }
+            craftingTable = table;
+            reached = true;
+            break;
+          } catch (err) {
+            console.warn(`[Items] Could not reach crafting table at ${table.position}: ${err.message}. Trying next...`);
+            if (signal?.aborted) throw new Error('Cancelled');
+            continue;
+          }
         }
-        craftingTable = tableBlock;
+
+        if (!reached) throw new Error('No reachable crafting table found');
       }
 
       // Get recipes

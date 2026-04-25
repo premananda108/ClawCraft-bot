@@ -98,19 +98,15 @@ async function main() {
   botCore.connect();
 
   // --- Graceful shutdown ---
-  process.on('SIGINT', () => {
-    console.log('\n[Server] 👋 Shutting down...');
+  const shutdown = (signal) => {
+    console.log(`\n[Server] 👋 Shutting down (${signal})...`);
     jobQueue.destroy();
     botCore.disconnect();
     process.exit(0);
-  });
+  };
 
-  process.on('SIGTERM', () => {
-    console.log('\n[Server] 👋 Shutting down (SIGTERM)...');
-    jobQueue.destroy();
-    botCore.disconnect();
-    process.exit(0);
-  });
+  process.on('SIGINT', () => shutdown('SIGINT'));
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
 }
 
 main().catch((err) => {
