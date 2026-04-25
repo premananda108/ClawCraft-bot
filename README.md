@@ -80,7 +80,7 @@ Skill is located in `skills/clawcraft-bot/SKILL.md`. To use in OpenClaw:
 3. Use `/clawcraft-bot` or simply ask the agent to control the bot
 
 ## Architecture
-
+![alt text](assets/clawcraft_bot_architecture_review_en.svg)
 ```
 server.js              ← Entry point (launches bot + bridge API)
 ├── src/config.js      ← Configuration (.env)
