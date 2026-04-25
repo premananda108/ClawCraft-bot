@@ -23,6 +23,26 @@ function createItemActions(bot) {
     return _mcData;
   }
 
+  /**
+   * Helper to wrap bot methods that don't support AbortSignal natively
+   */
+  async function wrapAbort(promise, signal) {
+    if (signal?.aborted) throw new Error('Cancelled');
+    return new Promise((resolve, reject) => {
+      const onAbort = () => reject(new Error('Cancelled'));
+      signal?.addEventListener('abort', onAbort, { once: true });
+      promise
+        .then(val => {
+          signal?.removeEventListener('abort', onAbort);
+          resolve(val);
+        })
+        .catch(err => {
+          signal?.removeEventListener('abort', onAbort);
+          reject(err);
+        });
+    });
+  }
+
   return {
     /**
      * Equip an item from the inventory
@@ -61,7 +81,7 @@ function createItemActions(bot) {
 
       if (!item) throw new Error(`Item "${name}" not found in inventory`);
 
-      await bot.equip(item, destination);
+      await wrapAbort(bot.equip(item, destination), signal);
 
       return {
         equipped: true,
@@ -81,7 +101,7 @@ function createItemActions(bot) {
       const { destination } = params;
       if (!destination) throw new Error('Required: destination (hand/head/torso/legs/feet/off-hand)');
 
-      await bot.unequip(destination);
+      await wrapAbort(bot.unequip(destination), signal);
 
       return { unequipped: true, destination };
     },
@@ -137,7 +157,7 @@ function createItemActions(bot) {
 
       console.log(`[Items] Crafting ${name}: need ${count}, yield per craft ${yieldPerCraft}, repeating ${timesToCraft} time(s)`);
 
-      await bot.craft(recipe, timesToCraft, craftingTable);
+      await wrapAbort(bot.craft(recipe, timesToCraft, craftingTable), signal);
 
       return {
         crafted: true,
@@ -156,7 +176,7 @@ function createItemActions(bot) {
       if (!bot.heldItem) throw new Error('Bot is not holding any item');
 
       const heldName = bot.heldItem.name;
-      await bot.consume();
+      await wrapAbort(bot.consume(), signal);
 
       return {
         consumed: true,
@@ -182,7 +202,7 @@ function createItemActions(bot) {
       const item = bot.inventory.findInventoryItem(itemData.id, null, false);
       if (!item) throw new Error(`Item "${name}" not found in inventory`);
 
-      await bot.toss(itemData.id, null, count);
+      await wrapAbort(bot.toss(itemData.id, null, count), signal);
 
       return {
         tossed: true,
