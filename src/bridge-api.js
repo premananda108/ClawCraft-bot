@@ -153,9 +153,21 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   // =====================================================
   // Combat (queued)
   // =====================================================
-  app.post('/actions/attack', requireBot, enqueueAction('attack'));
+  app.post('/actions/attack', requireBot, enqueueAction('attack', (req) => {
+    if (!req.body.name && req.body.id === undefined) throw new Error('Required: name or id');
+    return {
+      name: req.body.name,
+      id: parsePositiveInt(req.body.id),
+    };
+  }));
 
-  app.post('/actions/protect', requireBot, enqueueAction('protect'));
+  app.post('/actions/protect', requireBot, enqueueAction('protect', (req) => {
+    if (!req.body.player) throw new Error('Required: player');
+    return {
+      player: req.body.player,
+      radius: parseOptionalNumber(req.body.radius, 10),
+    };
+  }));
 
   // =====================================================
   // World (queued)
@@ -196,19 +208,54 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   // =====================================================
   // Items (queued)
   // =====================================================
-  app.post('/actions/equip', requireBot, enqueueAction('equipItem'));
+  app.post('/actions/equip', requireBot, enqueueAction('equipItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return {
+      name: req.body.name,
+      destination: req.body.destination || 'hand',
+    };
+  }));
 
-  app.post('/actions/unequip', requireBot, enqueueAction('unequipItem'));
+  app.post('/actions/unequip', requireBot, enqueueAction('unequipItem', (req) => {
+    if (!req.body.destination) throw new Error('Required: destination');
+    return {
+      destination: req.body.destination,
+    };
+  }));
 
-  app.post('/actions/craft', requireBot, enqueueAction('craftItem'));
+  app.post('/actions/craft', requireBot, enqueueAction('craftItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return {
+      name: req.body.name,
+      count: parsePositiveInt(req.body.count, 1),
+      useCraftingTable: req.body.useCraftingTable === true,
+    };
+  }));
 
-  app.post('/actions/consume', requireBot, enqueueAction('consume'));
+  app.post('/actions/consume', requireBot, enqueueAction('consume', () => ({})));
 
-  app.post('/actions/toss', requireBot, enqueueAction('tossItem'));
+  app.post('/actions/toss', requireBot, enqueueAction('tossItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return {
+      name: req.body.name,
+      count: parsePositiveInt(req.body.count, 1),
+    };
+  }));
 
-  app.post('/actions/hotbar', requireBot, enqueueAction('setHotbarSlot'));
+  app.post('/actions/hotbar', requireBot, enqueueAction('setHotbarSlot', (req) => {
+    const slot = parsePositiveInt(req.body.slot, 0);
+    if (slot < 0 || slot > 8) throw new Error('Invalid slot: must be 0-8');
+    return { slot };
+  }));
 
-  app.post('/actions/creative', requireBot, enqueueAction('creativeItem'));
+  app.post('/actions/creative', requireBot, enqueueAction('creativeItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return {
+      name: req.body.name,
+      count: parsePositiveInt(req.body.count, 1),
+      slot: parsePositiveInt(req.body.slot, 36),
+    };
+  }));
 
   // =====================================================
   // Stop (immediate, bypass queue)
