@@ -53,7 +53,6 @@ Bridge API is available at `http://127.0.0.1:3001` (default).
 | `/actions/hotbar` | `{ slot }` | Switch active hotbar slot (0-8) |
 | `/actions/attack` | `{ name?, id? }` | Attack entity |
 | `/actions/protect` | `{ player }` | Protect player |
-| `/actions/respawn` | — | Respawn after death |
 | `/actions/creative` | `{ name, count?, slot? }` | Get item (Creative mode only) |
 
 ### Jobs (GET)

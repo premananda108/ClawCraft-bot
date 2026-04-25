@@ -47,7 +47,6 @@ function createActions(bot) {
     consume: items.consume,
     tossItem: items.tossItem,
     setHotbarSlot: items.setHotbarSlot,
-    respawn: items.respawn,
     creativeItem: items.creativeItem,
   };
 
@@ -55,12 +54,12 @@ function createActions(bot) {
   const immediateActions = {
     stop: async () => {
       const results = {};
-      
-      try { results.navigation = await navigation.stopAll(); } catch (e) {}
-      try { results.combat = await combat.stopCombat(); } catch (e) {}
-      
+
+      try { results.navigation = await navigation.stopAll(); } catch (e) { }
+      try { results.combat = await combat.stopCombat(); } catch (e) { }
+
       if (bot && typeof bot.stopDigging === 'function') {
-        try { bot.stopDigging(); results.world = { diggingStopped: true }; } catch (e) {}
+        try { bot.stopDigging(); results.world = { diggingStopped: true }; } catch (e) { }
       }
 
       return { stopped: true, details: results };

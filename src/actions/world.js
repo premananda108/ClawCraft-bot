@@ -114,38 +114,9 @@ function createWorldActions(bot) {
       const dist = targetBlock.position.distanceTo(bot.entity.position);
       if (dist > 4.5) {
         const { goals: { GoalBlock } } = require('mineflayer-pathfinder');
+        const { pathfinderGoto } = require('./navigation-utils');
         const { x, y, z } = targetBlock.position;
-        await new Promise((resolve, reject) => {
-          let onPathUpdate;
-          let onGoalReached;
-
-          const onAbort = () => {
-            bot.pathfinder.setGoal(null);
-            bot.removeListener('path_update', onPathUpdate);
-            bot.removeListener('goal_reached', onGoalReached);
-            reject(new Error('Cancelled'));
-          };
-
-          onGoalReached = () => {
-            signal.removeEventListener('abort', onAbort);
-            bot.removeListener('path_update', onPathUpdate);
-            resolve();
-          };
-
-          onPathUpdate = (results) => {
-            if (results.status === 'noPath') {
-              signal.removeEventListener('abort', onAbort);
-              bot.removeListener('goal_reached', onGoalReached);
-              bot.pathfinder.setGoal(null);
-              reject(new Error('No path found to block'));
-            }
-          };
-
-          signal.addEventListener('abort', onAbort, { once: true });
-          bot.once('goal_reached', onGoalReached);
-          bot.once('path_update', onPathUpdate);
-          bot.pathfinder.setGoal(new GoalBlock(x, y, z));
-        });
+        await pathfinderGoto(bot, new GoalBlock(x, y, z), signal);
       }
 
       const blockName = targetBlock.name;
@@ -294,7 +265,8 @@ function createWorldActions(bot) {
 
       // Register abort handler: stop pathfinder so the plugin can react
       const onAbort = () => {
-        bot.pathfinder.setGoal(null);
+        if (bot.pathfinder) bot.pathfinder.setGoal(null);
+        if (typeof bot.stopDigging === 'function') bot.stopDigging();
       };
       signal.addEventListener('abort', onAbort, { once: true });
 

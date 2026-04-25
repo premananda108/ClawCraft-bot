@@ -180,7 +180,14 @@ class JobQueue {
       job.status = 'done';
       console.log(`[Queue] ✅ Completed: ${job.action} (${job.id})`);
     } catch (err) {
-      if (abortController.signal.aborted) {
+      const wasAbortedByUser = abortController.signal.aborted;
+      
+      // If the timeout triggered (or any other error), force abort to stop the ghost action
+      if (!wasAbortedByUser) {
+        abortController.abort();
+      }
+
+      if (wasAbortedByUser) {
         job.status = 'cancelled';
         job.error = 'Task was cancelled';
         console.log(`[Queue] ⏹️ Cancelled: ${job.action} (${job.id})`);
