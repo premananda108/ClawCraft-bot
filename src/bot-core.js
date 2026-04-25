@@ -154,7 +154,8 @@ class BotCore extends EventEmitter {
       this.state.connected = false;
       this.state.spawned = false;
       this.emit('kicked', { reason: reasonStr, loggedIn });
-      this._tryReconnect('kicked');
+      // The 'end' event will fire immediately after 'kicked', so we don't call _tryReconnect here
+      // to avoid setting up duplicate reconnect timers.
     });
 
     // --- Event: disconnection ---
@@ -185,6 +186,10 @@ class BotCore extends EventEmitter {
     if (!this.config.autoReconnect) {
       console.log('[BotCore] Auto-reconnect disabled');
       return;
+    }
+
+    if (this._reconnectTimer) {
+      clearTimeout(this._reconnectTimer);
     }
 
     if (this._reconnectAttempts >= this.config.maxReconnectAttempts) {

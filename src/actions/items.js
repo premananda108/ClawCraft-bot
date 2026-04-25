@@ -216,17 +216,6 @@ function createItemActions(bot) {
     },
 
     /**
-     * Respawn after death
-     */
-    async respawn(params, signal) {
-      if (!bot) throw new Error('Bot not connected');
-
-      bot.respawn();
-
-      return { respawning: true };
-    },
-
-    /**
      * Give yourself an item (Creative mode only)
      * @param {{ name: string, count?: number, slot?: number }} params
      */

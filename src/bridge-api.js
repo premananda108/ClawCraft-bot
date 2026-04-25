@@ -166,8 +166,6 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
 
   app.post('/actions/hotbar', requireBot, enqueueAction('setHotbarSlot'));
 
-  app.post('/actions/respawn', requireBot, enqueueAction('respawn'));
-
   app.post('/actions/creative', requireBot, enqueueAction('creativeItem'));
 
   // =====================================================
@@ -234,7 +232,6 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
           'POST /actions/consume',
           'POST /actions/toss        { name, count? }',
           'POST /actions/hotbar      { slot }',
-          'POST /actions/respawn',
         ],
         jobs: [
           'GET /jobs/:id',

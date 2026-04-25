@@ -216,7 +216,6 @@ Understand the current state before acting.
    - eat
    - continue progression
    - recover from failure
-   - respawn
 
 ### Safe example
 ```bash
@@ -533,40 +532,6 @@ This skill should play cautiously unless the user explicitly wants aggressive pl
 
 ---
 
-## PLAYBOOK H — Death and Respawn
-
-Use this when the bot dies or is clearly in a dead/down state.
-
-### Goal
-Recover cleanly and avoid instantly repeating mistakes.
-
-### Steps
-1. `POST /actions/respawn`
-2. wait longer than usual
-3. `GET /health`
-4. `GET /status`
-5. `GET /inventory`
-6. if danger may still exist, `GET /nearby`
-7. do not instantly resume the old task without re-evaluating safety
-
-### Rules
-- after respawn, assume the previous plan may no longer be valid
-- equipment or position may be different
-- if inventory is damaged or empty, return to conservative survival logic
-
-### Example
-```bash
-curl -X POST http://127.0.0.1:3001/actions/respawn -H "Content-Type: application/json" -d '{}'
-sleep 2.0
-curl http://127.0.0.1:3001/health
-sleep 0.5
-curl http://127.0.0.1:3001/status
-sleep 0.5
-curl http://127.0.0.1:3001/inventory
-```
-
----
-
 ## PLAYBOOK I — Movement and Positioning
 
 Use this when the next target is not directly reachable without moving.
@@ -714,7 +679,6 @@ POST /actions/craft    {"name": "stick", "count": 4, "useCraftingTable": false}
 POST /actions/consume  {}
 POST /actions/toss     {"name": "dirt", "count": 10}
 POST /actions/hotbar   {"slot": 0}
-POST /actions/respawn  {}
 POST /actions/creative {"name": "diamond", "count": 64, "slot": 36}
 ```
 
