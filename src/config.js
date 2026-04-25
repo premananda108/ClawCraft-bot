@@ -33,6 +33,7 @@ const config = {
   },
 
   // Behaviour
+  debug: process.env.DEBUG === 'true',
   autoReconnect: process.env.AUTO_RECONNECT !== 'false',
   reconnectDelay: parseIntSafe(process.env.RECONNECT_DELAY, 5000),
   maxReconnectAttempts: parseIntSafe(process.env.MAX_RECONNECT_ATTEMPTS, 10),

@@ -3,6 +3,7 @@
  *
  * status, position, inventory, nearbyEntities, scanNearbyBlocks
  */
+const config = require('../config');
 
 /**
  * @param {import('mineflayer').Bot} bot
@@ -97,14 +98,16 @@ function createInfoActions(bot) {
       const radius = params.radius || 32;
       const botPos = bot.entity.position;
 
-      console.log(`[Debug] nearbyEntities called, radius=${radius}, botPos=${botPos}`);
-      console.log(`[Debug] total entities in memory: ${Object.keys(bot.entities).length}`);
-      
-      // Log all players and their entities
-      Object.keys(bot.players).forEach(name => {
-        const p = bot.players[name];
-        console.log(`[Debug] Player: ${name}, entity found: ${!!p.entity}, pos: ${p.entity ? p.entity.position : 'N/A'}`);
-      });
+      if (config.debug) {
+        console.log(`[Debug] nearbyEntities called, radius=${radius}, botPos=${botPos}`);
+        console.log(`[Debug] total entities in memory: ${Object.keys(bot.entities).length}`);
+        
+        // Log all players and their entities
+        Object.keys(bot.players).forEach(name => {
+          const p = bot.players[name];
+          console.log(`[Debug] Player: ${name}, entity found: ${!!p.entity}, pos: ${p.entity ? p.entity.position : 'N/A'}`);
+        });
+      }
 
       const entities = Object.values(bot.entities)
         .filter(e => {
@@ -125,7 +128,9 @@ function createInfoActions(bot) {
         }))
         .sort((a, b) => a.distance - b.distance);
 
-      console.log(`[Debug] entities found within radius: ${entities.length}`);
+      if (config.debug) {
+        console.log(`[Debug] entities found within radius: ${entities.length}`);
+      }
       return {
         entities,
         count: entities.length,
@@ -154,7 +159,7 @@ function createInfoActions(bot) {
         for (let y = -radius; y <= radius; y++) {
           for (let z = -radius; z <= radius; z++) {
             const block = bot.blockAt(botPos.offset(x, y, z));
-            if (x === 0 && y === -1 && z === 0) {
+            if (config.debug && x === 0 && y === -1 && z === 0) {
               console.log(`[DebugScan] Block at feet (${botPos.offset(0,-1,0)}): ${block ? block.name : 'null'}`);
             }
             if (!block || block.name === 'air') continue;
