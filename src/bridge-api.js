@@ -76,6 +76,13 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
     return num;
   }
 
+  function parseNonNegativeInt(val, defaultVal = undefined) {
+    if (val === undefined || val === null) return defaultVal;
+    const num = parseInt(val, 10);
+    if (Number.isNaN(num) || num < 0) return defaultVal;
+    return num;
+  }
+
   // =====================================================
   // Health (always available)
   // =====================================================
@@ -243,8 +250,8 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   }));
 
   app.post('/actions/hotbar', requireBot, enqueueAction('setHotbarSlot', (req) => {
-    const slot = parsePositiveInt(req.body.slot, 0);
-    if (slot < 0 || slot > 8) throw new Error('Invalid slot: must be 0-8');
+    const slot = parseNonNegativeInt(req.body.slot);
+    if (slot === undefined || slot > 8) throw new Error('Invalid slot: must be 0-8');
     return { slot };
   }));
 
@@ -336,6 +343,12 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
       error: `Unknown endpoint: ${req.method} ${req.path}`,
       hint: 'GET / for all available endpoints',
     });
+  });
+
+  // Global error handler — prevents stack trace leaks
+  app.use((err, req, res, _next) => {
+    console.error(`[Bridge API] Unhandled error on ${req.method} ${req.path}:`, err.message);
+    res.status(500).json({ ok: false, error: 'Internal server error' });
   });
 
   // Launch server

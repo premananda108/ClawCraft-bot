@@ -6,7 +6,7 @@
 // subscribes to the deprecated 'physicTick' event. We filter only that specific message.
 const _origWarn = console.warn;
 console.warn = function (...args) {
-  if (typeof args[0] === 'string' && args[0].includes('physicTick')) return;
+  if (typeof args[0] === 'string' && args[0].includes("'physicTick' is deprecated")) return;
   _origWarn.apply(console, args);
 };
 // ============================================================================

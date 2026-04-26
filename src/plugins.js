@@ -2,8 +2,6 @@
  * plugins.js — Layer 2: loading and configuring extensions
  */
 
-let viewerRunning = false;
-
 /**
  * Load mandatory and optional plugins
  * @param {import('mineflayer').Bot} bot

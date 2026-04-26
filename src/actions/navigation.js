@@ -14,11 +14,6 @@ const { pathfinderGoto } = require('./navigation-utils');
  * @param {import('mineflayer').Bot} bot
  */
 function createNavigationActions(bot) {
-  /** @type {Movements|null} */
-  let movements = null;
-
-
-
   return {
     /**
      * Go to coordinates { x, y, z }
@@ -67,36 +62,32 @@ function createNavigationActions(bot) {
       bot.pathfinder.setGoal(goal, true); // true = dynamic (updates)
 
       // Follow works until cancelled
-      return new Promise((resolve, reject) => {
-        const onAbort = () => {
-          bot.pathfinder.setGoal(null);
-          resolve({
-            following: false,
-            reason: 'stopped',
-            player,
-          });
-        };
-        signal.addEventListener('abort', onAbort, { once: true });
+      return new Promise((resolve) => {
+        let resolved = false;
 
-        // If the player leaves — stop following
-        const onPlayerLeft = (leftPlayer) => {
-          if (leftPlayer.username === player) {
-            signal.removeEventListener('abort', onAbort);
-            bot.removeListener('playerLeft', onPlayerLeft);
-            bot.pathfinder.setGoal(null);
-            resolve({
-              following: false,
-              reason: 'player_left',
-              player,
-            });
-          }
-        };
-        bot.on('playerLeft', onPlayerLeft);
-
-        // Cleanup on abort
-        signal.addEventListener('abort', () => {
+        const cleanup = () => {
+          signal.removeEventListener('abort', onAbort);
           bot.removeListener('playerLeft', onPlayerLeft);
-        }, { once: true });
+        };
+
+        const onAbort = () => {
+          if (resolved) return;
+          resolved = true;
+          cleanup();
+          bot.pathfinder.setGoal(null);
+          resolve({ following: false, reason: 'stopped', player });
+        };
+
+        const onPlayerLeft = (leftPlayer) => {
+          if (leftPlayer.username !== player || resolved) return;
+          resolved = true;
+          cleanup();
+          bot.pathfinder.setGoal(null);
+          resolve({ following: false, reason: 'player_left', player });
+        };
+
+        signal.addEventListener('abort', onAbort, { once: true });
+        bot.on('playerLeft', onPlayerLeft);
       });
     },
 

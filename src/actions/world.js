@@ -125,10 +125,10 @@ function createWorldActions(bot) {
       const digTime = bot.digTime(targetBlock); // Calculate BEFORE digging — block will be destroyed
 
       const onAbort = () => bot.stopDigging();
-      signal.addEventListener('abort', onAbort, { once: true });
+      signal?.addEventListener('abort', onAbort, { once: true });
 
       await bot.dig(targetBlock, true); // forceLook=true
-      signal.removeEventListener('abort', onAbort);
+      signal?.removeEventListener('abort', onAbort);
 
       return {
         dug: true,
@@ -244,6 +244,7 @@ function createWorldActions(bot) {
     async collectBlock(params, signal) {
       if (!bot) throw new Error('Bot not connected');
       if (!bot.collectBlock) throw new Error('collectBlock plugin not loaded');
+      if (signal?.aborted) throw new Error('Cancelled');
 
       ensureMovements(bot);
 

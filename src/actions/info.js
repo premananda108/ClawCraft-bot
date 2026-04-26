@@ -5,6 +5,8 @@
  */
 const config = require('../config');
 
+const INVENTORY_SLOTS = 36;
+
 /**
  * @param {import('mineflayer').Bot} bot
  */
@@ -84,7 +86,7 @@ function createInfoActions(bot) {
       return {
         items,
         itemCount: items.length,
-        freeSlots: 36 - items.length,
+        freeSlots: INVENTORY_SLOTS - items.length,
         equipment,
       };
     },
@@ -144,7 +146,8 @@ function createInfoActions(bot) {
     scanNearbyBlocks(params = {}) {
       if (!bot) throw new Error('Bot not connected');
 
-      const radius = params.radius || 8;
+      const MAX_SCAN_RADIUS = 16;
+      const radius = Math.min(params.radius || 8, MAX_SCAN_RADIUS);
       const botPos = bot.entity.position.floored();
 
       // Look for interesting blocks within the radius

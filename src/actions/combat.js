@@ -80,18 +80,29 @@ function createCombatActions(bot) {
       if (bot.pvp) {
         bot.pvp.attack(target);
 
+        const MAX_TICKS = 60; // Safety limit: 60 * 500ms = 30s max
         return new Promise((resolve) => {
+          let ticks = 0;
           const checkTask = setInterval(() => {
+            ticks++;
             if (signal?.aborted) {
               bot.pvp.stop();
               clearInterval(checkTask);
               resolve({ attacked: false, target: target.username || target.name, reason: 'cancelled' });
+              return;
             }
             // If the target is dead or has disappeared
             if (!target.isValid || target.health <= 0) {
               bot.pvp.stop();
               clearInterval(checkTask);
               resolve({ attacked: true, target: target.username || target.name, outcome: 'Target defeated' });
+              return;
+            }
+            // Safety: stop if taking too long (target may have escaped)
+            if (ticks >= MAX_TICKS) {
+              bot.pvp.stop();
+              clearInterval(checkTask);
+              resolve({ attacked: true, target: target.username || target.name, outcome: 'Combat timed out (target escaped?)' });
             }
           }, 500);
         });
@@ -142,14 +153,14 @@ function createCombatActions(bot) {
           const target = hostileNearBot || hostileNearPlayer;
 
           if (target) {
-            if (bot.pvp.target !== target) {
+            if (bot.pvp && bot.pvp.target !== target) {
               console.log(`[Combat] Protecting! Target: ${target.name || target.username}`);
               bot.pathfinder.setGoal(null); // Stop walking
               bot.pvp.attack(target);
             }
           } else if (pEntity) {
             // If there are no threats, follow the player
-            if (bot.pvp.target) bot.pvp.stop();
+            if (bot.pvp && bot.pvp.target) bot.pvp.stop();
 
             // GoalFollow automatically handles distance and updates path.
             // We only need to set it ONCE.
