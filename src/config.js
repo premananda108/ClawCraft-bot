@@ -4,17 +4,7 @@
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '..', '.env') });
 
-/**
- * Safe parseInt: returns defaultValue when the string is not a valid integer.
- * Unlike `parseInt(v) || default`, correctly handles NaN and the value 0.
- * @param {string|undefined} value
- * @param {number} defaultValue
- * @returns {number}
- */
-function parseIntSafe(value, defaultValue) {
-  const parsed = parseInt(value, 10);
-  return Number.isNaN(parsed) ? defaultValue : parsed;
-}
+const { parseIntSafe } = require('./validation');
 
 const config = {
   // Minecraft Server

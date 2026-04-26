@@ -68,34 +68,13 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
     };
   }
 
-  // --- Validation Helpers ---
-  function parseRequiredNumber(val, name) {
-    if (val === undefined || val === null) throw new Error(`Required: ${name}`);
-    const num = Number(val);
-    if (Number.isNaN(num)) throw new Error(`Invalid number: ${name}`);
-    return num;
-  }
-
-  function parseOptionalNumber(val, defaultVal = undefined) {
-    if (val === undefined || val === null) return defaultVal;
-    const num = Number(val);
-    if (Number.isNaN(num)) return defaultVal;
-    return num;
-  }
-
-  function parsePositiveInt(val, defaultVal = undefined) {
-    if (val === undefined || val === null) return defaultVal;
-    const num = parseInt(val, 10);
-    if (Number.isNaN(num) || num <= 0) return defaultVal;
-    return num;
-  }
-
-  function parseNonNegativeInt(val, defaultVal = undefined) {
-    if (val === undefined || val === null) return defaultVal;
-    const num = parseInt(val, 10);
-    if (Number.isNaN(num) || num < 0) return defaultVal;
-    return num;
-  }
+  // --- Validation Helpers (from shared module) ---
+  const {
+    parseRequiredNumber,
+    parseOptionalNumber,
+    parsePositiveInt,
+    parseNonNegativeInt,
+  } = require('./validation');
 
   // =====================================================
   // Health (always available)
