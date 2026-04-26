@@ -1,10 +1,16 @@
 /**
  * tests/api.test.js — Integration tests for Bridge API
  */
-const { describe, it, beforeEach, afterEach } = require('node:test');
+const { describe, it, beforeEach, afterEach, after } = require('node:test');
 const assert = require('node:assert/strict');
 const JobQueue = require('../src/job-queue');
 const { createBridgeAPI } = require('../src/bridge-api');
+
+// Force exit after all tests in this file
+after(() => {
+  // Give it a tiny bit of time to flush TAP output
+  setTimeout(() => process.exit(0), 100);
+});
 
 // Helper: Start a test server with mocks
 async function startTestServer(overrides = {}) {
@@ -45,16 +51,9 @@ async function startTestServer(overrides = {}) {
   return { server, baseUrl, jobQueue, config };
 }
 
-// Suppress logs during tests
-const origLog = console.log;
-const origErr = console.error;
-function silence() { console.log = () => {}; console.error = () => {}; }
-function restore() { console.log = origLog; console.error = origErr; }
-
 describe('Bridge API — Integration', () => {
   let testEnv;
 
-  beforeEach(() => silence());
   afterEach(async () => {
     if (testEnv) {
       if (testEnv.server) {
@@ -66,22 +65,24 @@ describe('Bridge API — Integration', () => {
       if (testEnv.jobQueue) {
         testEnv.jobQueue.destroy();
       }
+      testEnv = null;
     }
-    restore();
   });
 
   it('GET /health — returns 200 and reflects bot state', async () => {
     // 1. Ready
     testEnv = await startTestServer({ ready: true });
-    const res1 = await fetch(`${testEnv.baseUrl}/health`);
+    const res1 = await fetch(`${testEnv.baseUrl}/health`, { headers: { 'Connection': 'close' } });
     const body1 = await res1.json();
     assert.equal(res1.status, 200);
     assert.equal(body1.data.botState.spawned, true);
 
     // 2. Not ready (but still returns 200 for health check)
+    if (typeof testEnv.server.closeAllConnections === 'function') testEnv.server.closeAllConnections();
     await new Promise(r => testEnv.server.close(r));
+
     testEnv = await startTestServer({ ready: false, botCore: { state: { spawned: false } } });
-    const res2 = await fetch(`${testEnv.baseUrl}/health`);
+    const res2 = await fetch(`${testEnv.baseUrl}/health`, { headers: { 'Connection': 'close' } });
     const body2 = await res2.json();
     assert.equal(res2.status, 200);
     assert.equal(body2.data.botState.spawned, false);
@@ -91,16 +92,10 @@ describe('Bridge API — Integration', () => {
     testEnv = await startTestServer();
     const res = await fetch(`${testEnv.baseUrl}/actions/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Connection': 'close' },
       body: JSON.stringify({ message: 'Hello unit tests' })
     });
     const body = await res.json();
-
-    if (res.status !== 200) {
-      restore();
-      console.error('API Error body:', body);
-      silence();
-    }
 
     assert.equal(res.status, 200);
     assert.equal(body.ok, true);
@@ -116,27 +111,20 @@ describe('Bridge API — Integration', () => {
     testEnv = await startTestServer({ apiKey: 'secret123' });
     
     // 1. Without key
-    const res1 = await fetch(`${testEnv.baseUrl}/status`);
+    const res1 = await fetch(`${testEnv.baseUrl}/status`, { headers: { 'Connection': 'close' } });
     assert.equal(res1.status, 401);
 
     // 2. With wrong key
     const res2 = await fetch(`${testEnv.baseUrl}/status`, {
-      headers: { 'x-api-key': 'wrong' }
+      headers: { 'x-api-key': 'wrong', 'Connection': 'close' }
     });
     assert.equal(res2.status, 401);
 
     // 3. With correct key
     const res3 = await fetch(`${testEnv.baseUrl}/status`, {
-      headers: { 'x-api-key': 'secret123' }
+      headers: { 'x-api-key': 'secret123', 'Connection': 'close' }
     });
     
-    if (res3.status !== 200) {
-      restore();
-      const body = await res3.json();
-      console.error('API Key Success check failed. Status:', res3.status, 'Body:', body);
-      silence();
-    }
-
     assert.equal(res3.status, 200);
     const body3 = await res3.json();
     assert.equal(body3.ok, true);
@@ -144,13 +132,13 @@ describe('Bridge API — Integration', () => {
 
   it('API Key — allows /health without key for monitoring', async () => {
     testEnv = await startTestServer({ apiKey: 'secret123' });
-    const res = await fetch(`${testEnv.baseUrl}/health`);
+    const res = await fetch(`${testEnv.baseUrl}/health`, { headers: { 'Connection': 'close' } });
     assert.equal(res.status, 200);
   });
 
   it('404 Handling — returns custom error for unknown routes', async () => {
     testEnv = await startTestServer();
-    const res = await fetch(`${testEnv.baseUrl}/something-weird`);
+    const res = await fetch(`${testEnv.baseUrl}/something-weird`, { headers: { 'Connection': 'close' } });
     const body = await res.json();
 
     assert.equal(res.status, 404);
