@@ -7,6 +7,8 @@
 const { describe, it, beforeEach, afterEach } = require('node:test');
 const assert = require('node:assert/strict');
 
+process.env.NODE_ENV = 'test';
+
 // We need to test config with different env vars each time.
 // Since require() caches modules, we must clear the cache before each test.
 function loadFreshConfig(envOverrides = {}) {
