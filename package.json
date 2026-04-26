@@ -1,13 +1,13 @@
 {
   "name": "clawcraft-bot",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "description": "Safe local Minecraft bot with high-level actions and bridge API for OpenClaw",
   "main": "server.js",
   "type": "commonjs",
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test tests/*.test.js",
+    "test": "node --test --test-reporter spec tests/api.test.js tests/config.test.js tests/job-queue.test.js tests/validation.test.js",
     "doctor": "node -e \"require('./src/config');console.log('✅ Config OK')\""
   },
   "keywords": [
