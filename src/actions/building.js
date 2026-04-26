@@ -14,6 +14,9 @@ function createBuildingActions(bot) {
      */
     async buildHouse(params, signal) {
       if (!bot) throw new Error('Bot not connected');
+      if (bot.game.gameMode !== 'creative') {
+        throw new Error('buildHouse requires creative mode. Please switch gamemode first.');
+      }
       
       const startPos = bot.entity.position.clone().floored();
       const base = findBuildArea(bot, startPos, 5); 
