@@ -20,15 +20,31 @@ function createBuildingActions(bot) {
       
       console.log(`[Building] Starting 5x5 Starter House at ${base}`);
 
+      const mcData = require('minecraft-data')(bot.version);
+      const reqMat = params?.material || 'oak_planks';
+      
       const materials = {
         pillar: 'oak_log',
-        wall: 'oak_planks',
+        wall: reqMat,
         roof: 'oak_slab'
       };
 
+      // Heuristics for wood types or custom materials
+      if (reqMat.includes('planks')) {
+        const type = reqMat.split('_')[0]; 
+        if (mcData.itemsByName[`${type}_log`]) materials.pillar = `${type}_log`;
+        if (mcData.itemsByName[`${type}_slab`]) materials.roof = `${type}_slab`;
+      } else if (reqMat !== 'oak_planks') {
+        materials.pillar = reqMat;
+        if (mcData.itemsByName[`${reqMat}_slab`]) {
+          materials.roof = `${reqMat}_slab`;
+        } else {
+          materials.roof = reqMat;
+        }
+      }
+
       // 1. Prepare items (Creative mode)
       if (bot.game.gameMode === 'creative') {
-        const mcData = require('minecraft-data')(bot.version);
         const Item = require('prismarine-item')(bot.version);
         for (const m of Object.values(materials)) {
           const item = mcData.itemsByName[m];
