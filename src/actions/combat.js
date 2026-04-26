@@ -34,13 +34,11 @@ function createCombatActions(bot) {
     }
   }
 
-  // Clean up on bot disconnect to prevent calling methods on a dead bot instance
-  bot.once('end', () => {
-    _stopProtection('disconnected');
-    if (bot.pvp) {
-      try { bot.pvp.stop(); } catch (_) { /* ignore */ }
-    }
-  });
+  // Note: We intentionally do NOT use bot.once('end') for cleanup here.
+  // Mineflayer can emit 'end' during dimension changes or server respawn
+  // mechanics even when the bot is still alive, which prematurely kills
+  // protection. Instead, the protect interval checks bot.entity/health
+  // inline (line ~129) and stopCombat() handles manual cleanup.
 
   function findHostileNear(position, radius = 16) {
     return bot.nearestEntity(e => {
@@ -130,18 +128,31 @@ function createCombatActions(bot) {
 
       return new Promise((resolve) => {
         protectionResolve = resolve;
+        let unavailableTicks = 0;
+        const MAX_UNAVAILABLE_TICKS = 20; // 20 * 500ms = 10s before assuming disconnected
+
         protectionInterval = setInterval(() => {
           if (signal?.aborted) {
             _stopProtection('stopped');
             return;
           }
 
-          // Do nothing if bot is dead or not fully spawned
+          // Skip tick if bot is dead or not fully spawned
           if (!bot.entity || bot.health <= 0 || bot.isDead) {
-            if (bot.pvp) bot.pvp.stop();
-            if (bot.pathfinder) bot.pathfinder.setGoal(null);
+            unavailableTicks++;
+            if (bot.pvp) try { bot.pvp.stop(); } catch (_) { }
+            if (bot.pathfinder) try { bot.pathfinder.setGoal(null); } catch (_) { }
+
+            // If bot has been unavailable too long, assume real disconnect
+            if (unavailableTicks >= MAX_UNAVAILABLE_TICKS) {
+              console.log('[Combat] Bot unavailable for too long — stopping protection');
+              _stopProtection('disconnected');
+            }
             return;
           }
+
+          // Bot is alive — reset counter
+          unavailableTicks = 0;
 
           const pEntity = bot.players[targetPlayerName]?.entity;
 
