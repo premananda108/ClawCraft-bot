@@ -50,6 +50,7 @@ Bridge API is available at `http://127.0.0.1:3001` (default).
 | `/actions/toss` | `{ name, count? }` | Drop item from inventory |
 | `/actions/consume` | — | Eat or drink item in hand |
 | `/actions/place-block` | `{ x, y, z, name }` | Place block in the world (face calculated automatically) |
+| `/actions/build-house` | `{ material? }` | Build a small 5x5 starter house (default: oak_planks) |
 | `/actions/hotbar` | `{ slot }` | Switch active hotbar slot (0-8) |
 | `/actions/attack` | `{ name?, id? }` | Attack entity |
 | `/actions/protect` | `{ player }` | Protect player |

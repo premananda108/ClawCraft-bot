@@ -669,6 +669,7 @@ POST /actions/dig            {"name": "oak_log"}
 POST /actions/dig            {"x": 100, "y": 64, "z": -200}
 POST /actions/activate-block {"x": 100, "y": 64, "z": -200}
 POST /actions/place-block    {"x": 100, "y": 64, "z": -200, "name": "dirt"}
+POST /actions/build-house    {"material": "oak_planks"}
 ```
 
 ### Item Management

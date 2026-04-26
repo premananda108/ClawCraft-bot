@@ -1,7 +1,7 @@
 /**
  * building.js — High-level building actions
  */
-const { GoalBlock } = require('mineflayer-pathfinder').goals;
+const { GoalNear } = require('mineflayer-pathfinder').goals;
 const { ensureMovements } = require('./navigation-utils');
 
 function createBuildingActions(bot) {
@@ -86,7 +86,7 @@ function createBuildingActions(bot) {
           // Move closer
           if (bot.entity.position.distanceTo(task.pos) > 4.5) {
             ensureMovements(bot);
-            await bot.pathfinder.goto(new GoalBlock(task.pos.x, task.pos.y, task.pos.z));
+            await bot.pathfinder.goto(new GoalNear(task.pos.x, task.pos.y, task.pos.z, 3));
           }
 
           const support = findSupport(bot, task.pos);
