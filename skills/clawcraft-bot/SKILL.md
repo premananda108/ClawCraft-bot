@@ -160,6 +160,18 @@ When danger exists, pause the normal plan and switch to the relevant defense pla
 
 ---
 
+## Autonomous Behavior (Instincts)
+
+The bot has built-in survival instincts that run in the background. Be aware that these can **interrupt your commands**:
+
+1. **Panic Mode**: If health <= 6 HP, the bot will automatically cancel your current job and try to run away. You will see "I'm badly hurt!" in chat.
+2. **Auto-Defend**: If attacked while doing something like digging or building, the bot will stop that task to fight back.
+3. **Auto-Eat**: The bot may eat food from its hand if it's hungry and not busy.
+
+If you see a job transition to `cancelled` or `failed` suddenly with a chat message about being hurt, do not immediately re-send the command. Check `/status` and wait for the bot to recover.
+
+---
+
 ## Small-Step Rule
 
 Always prefer:

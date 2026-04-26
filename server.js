@@ -10,11 +10,24 @@ console.warn = function (...args) {
   _origWarn.apply(console, args);
 };
 const config = require('./src/config');
+// Global error handling to prevent crashes from 3rd party plugins
+process.on('uncaughtException', (err) => {
+  console.error('[Critical] Uncaught Exception:', err.message);
+  if (err.stack) console.error(err.stack);
+  // Do not exit, let the bot try to recover
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('[Critical] Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
 const BotCore = require('./src/bot-core');
 const { loadPlugins } = require('./src/plugins');
 const { createActions } = require('./src/actions');
 const JobQueue = require('./src/job-queue');
 const { createBridgeAPI } = require('./src/bridge-api');
+const SafetyManager = require('./src/safety-manager');
+
 
 async function main() {
   console.log('='.repeat(50));
@@ -40,6 +53,10 @@ async function main() {
 
     // Create actions
     actions = createActions(bot);
+
+    // Initialize Safety Manager (Instincts)
+    const safety = new SafetyManager(bot, jobQueue, actions);
+    safety.start();
 
     console.log('[Server] 🎮 Bot is ready to work!');
   });

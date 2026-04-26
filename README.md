@@ -62,6 +62,14 @@ Bridge API is available at `http://127.0.0.1:3001` (default).
 |----------|-------------|
 | `/jobs/:id` | Job status (pending/running/done/failed/cancelled) |
 
+## Safety & Instincts
+
+The bot has a **Safety Manager** that runs autonomous "instincts" in the background. These behaviors can interrupt active jobs if necessary:
+
+- **Panic Mode (Retreat)**: Activates when health <= 6 HP (3 hearts). The bot cancels all tasks, notifies the chat, and runs away from threats for 10 seconds.
+- **Auto-Defend (Retaliate)**: If attacked while performing a non-combat task (digging, building, etc.), the bot will cancel the task and counter-attack the aggressor.
+- **Auto-Eat**: If hunger is low (< 14) and the bot is holding food while idle, it will automatically consume it.
+
 ## Configuration
 
 All settings in `.env` (see `.env.example`):
