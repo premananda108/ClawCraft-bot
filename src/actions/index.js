@@ -7,6 +7,8 @@ const { createChatActions } = require('./chat');
 const { createCombatActions } = require('./combat');
 const { createWorldActions } = require('./world');
 const { createItemActions } = require('./items');
+const { createBuildingActions } = require('./building');
+
 
 /**
  * Create a registry of all actions for the bot
@@ -19,6 +21,8 @@ function createActions(bot) {
   const combat = createCombatActions(bot);
   const world = createWorldActions(bot);
   const items = createItemActions(bot);
+  const building = createBuildingActions(bot);
+
 
   // --- Queued actions (via job queue, one at a time) ---
   const queuedActions = {
@@ -48,6 +52,9 @@ function createActions(bot) {
     tossItem: items.tossItem,
     setHotbarSlot: items.setHotbarSlot,
     creativeItem: items.creativeItem,
+
+    // Building
+    buildHouse: building.buildHouse,
   };
 
   // --- Immediate actions (executed instantly, bypassing the queue) ---

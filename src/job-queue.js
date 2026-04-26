@@ -153,6 +153,7 @@ class JobQueue {
       craftItem: 45000,
       collectBlock: 120000,
       attack: 30000,
+      buildHouse: 600000,
       follow: null,
       protect: null
     };

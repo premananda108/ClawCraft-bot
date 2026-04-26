@@ -205,6 +205,11 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
     };
   }));
 
+  app.post('/actions/build-house', requireBot, enqueueAction('buildHouse', (req) => ({
+    material: req.body.material || 'oak_planks',
+  })));
+
+
   // =====================================================
   // Items (queued)
   // =====================================================
