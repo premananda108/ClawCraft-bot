@@ -77,9 +77,21 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   } = require('./validation');
 
   // =====================================================
-  // Health (always available)
+  // Route Registry (Single Source of Truth)
   // =====================================================
-  app.get('/health', (req, res) => {
+  const apiDocs = {};
+
+  function reg(method, path, category, paramsDesc, handler, isPublic = false) {
+    if (!apiDocs[category]) apiDocs[category] = [];
+    apiDocs[category].push(`${method} ${path}${paramsDesc ? '        ' + paramsDesc : ''}`.trim());
+    
+    const middlewares = isPublic ? [] : [requireBot];
+    if (method === 'GET') app.get(path, ...middlewares, handler);
+    else if (method === 'POST') app.post(path, ...middlewares, handler);
+  }
+
+  // Health (always available)
+  reg('GET', '/health', 'read_only', '', (req, res) => {
     res.json({
       ok: true,
       data: {
@@ -88,30 +100,22 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
         queue: jobQueue.summary(),
       },
     });
-  });
+  }, true);
 
-  // =====================================================
-  // Read-only endpoints (bypass queue)
-  // =====================================================
-  app.get('/status', requireBot, safeCall(() => actions.readOnlyActions.status()));
-
-  app.get('/position', requireBot, safeCall(() => actions.readOnlyActions.position()));
-
-  app.get('/inventory', requireBot, safeCall(() => actions.readOnlyActions.inventory()));
-
-  app.get('/nearby', requireBot, safeCall((req) => {
-    return actions.readOnlyActions.nearby({
-      radius: parsePositiveInt(req.query.radius),
-    });
+  // Read-only endpoints
+  reg('GET', '/status', 'read_only', '', safeCall(() => actions.readOnlyActions.status()));
+  reg('GET', '/position', 'read_only', '', safeCall(() => actions.readOnlyActions.position()));
+  reg('GET', '/inventory', 'read_only', '', safeCall(() => actions.readOnlyActions.inventory()));
+  
+  reg('GET', '/nearby', 'read_only', '[?radius=32]', safeCall((req) => {
+    return actions.readOnlyActions.nearby({ radius: parsePositiveInt(req.query.radius) });
   }));
 
-  app.get('/scan-blocks', requireBot, safeCall((req) => {
-    return actions.readOnlyActions.scan({
-      radius: parsePositiveInt(req.query.radius),
-    });
+  reg('GET', '/scan-blocks', 'read_only', '[?radius=8]', safeCall((req) => {
+    return actions.readOnlyActions.scan({ radius: parsePositiveInt(req.query.radius) });
   }));
 
-  app.get('/findblock', requireBot, safeCall((req) => {
+  reg('GET', '/findblock', 'read_only', '?name=oak_log[&maxDistance=32&count=1]', safeCall((req) => {
     return actions.readOnlyActions.findBlock({
       name: req.query.name,
       maxDistance: parsePositiveInt(req.query.maxDistance),
@@ -119,153 +123,19 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
     });
   }));
 
-  // =====================================================
-  // Navigation (queued)
-  // =====================================================
-  app.post('/actions/goto', requireBot, enqueueAction('goto', (req) => ({
+  // Navigation
+  reg('POST', '/actions/goto', 'navigation', '{ x, y, z }', enqueueAction('goto', (req) => ({
     x: parseRequiredNumber(req.body.x, 'x'),
     y: parseRequiredNumber(req.body.y, 'y'),
     z: parseRequiredNumber(req.body.z, 'z'),
   })));
 
-  app.post('/actions/follow', requireBot, enqueueAction('follow', (req) => {
+  reg('POST', '/actions/follow', 'navigation', '{ player, distance? }', enqueueAction('follow', (req) => {
     if (!req.body.player) throw new Error('Required: player');
-    return {
-      player: req.body.player,
-      distance: parseOptionalNumber(req.body.distance),
-    };
+    return { player: req.body.player, distance: parseOptionalNumber(req.body.distance) };
   }));
 
-  // =====================================================
-  // Chat (queued)
-  // =====================================================
-  app.post('/actions/chat', requireBot, enqueueAction('chat', (req) => {
-    if (!req.body.message) throw new Error('Required: message');
-    return { message: req.body.message };
-  }));
-
-  app.post('/actions/whisper', requireBot, enqueueAction('whisper', (req) => {
-    if (!req.body.player) throw new Error('Required: player');
-    if (!req.body.message) throw new Error('Required: message');
-    return { player: req.body.player, message: req.body.message };
-  }));
-
-  // =====================================================
-  // Combat (queued)
-  // =====================================================
-  app.post('/actions/attack', requireBot, enqueueAction('attack', (req) => {
-    if (!req.body.name && req.body.id === undefined) throw new Error('Required: name or id');
-    return {
-      name: req.body.name,
-      id: parsePositiveInt(req.body.id),
-    };
-  }));
-
-  app.post('/actions/protect', requireBot, enqueueAction('protect', (req) => {
-    if (!req.body.player) throw new Error('Required: player');
-    return {
-      player: req.body.player,
-      radius: parseOptionalNumber(req.body.radius, 10),
-    };
-  }));
-
-  // =====================================================
-  // World (queued)
-  // =====================================================
-  app.post('/actions/dig', requireBot, enqueueAction('digBlock', (req) => {
-    const p = { name: req.body.name, maxDistance: parsePositiveInt(req.body.maxDistance) };
-    if (req.body.x !== undefined) p.x = parseRequiredNumber(req.body.x, 'x');
-    if (req.body.y !== undefined) p.y = parseRequiredNumber(req.body.y, 'y');
-    if (req.body.z !== undefined) p.z = parseRequiredNumber(req.body.z, 'z');
-    return p;
-  }));
-
-  app.post('/actions/collect', requireBot, enqueueAction('collectBlock', (req) => {
-    if (!req.body.name) throw new Error('Required: name');
-    return {
-      name: req.body.name,
-      count: parsePositiveInt(req.body.count),
-      maxDistance: parsePositiveInt(req.body.maxDistance),
-    };
-  }));
-
-  app.post('/actions/activate-block', requireBot, enqueueAction('activateBlock', (req) => ({
-    x: parseRequiredNumber(req.body.x, 'x'),
-    y: parseRequiredNumber(req.body.y, 'y'),
-    z: parseRequiredNumber(req.body.z, 'z'),
-  })));
-
-  app.post('/actions/place-block', requireBot, enqueueAction('placeBlock', (req) => {
-    if (!req.body.name) throw new Error('Required: name');
-    return {
-      name: req.body.name,
-      x: parseRequiredNumber(req.body.x, 'x'),
-      y: parseRequiredNumber(req.body.y, 'y'),
-      z: parseRequiredNumber(req.body.z, 'z'),
-    };
-  }));
-
-  app.post('/actions/build-house', requireBot, enqueueAction('buildHouse', (req) => ({
-    material: req.body.material || 'oak_planks',
-  })));
-
-
-  // =====================================================
-  // Items (queued)
-  // =====================================================
-  app.post('/actions/equip', requireBot, enqueueAction('equipItem', (req) => {
-    if (!req.body.name) throw new Error('Required: name');
-    return {
-      name: req.body.name,
-      destination: req.body.destination || 'hand',
-    };
-  }));
-
-  app.post('/actions/unequip', requireBot, enqueueAction('unequipItem', (req) => {
-    if (!req.body.destination) throw new Error('Required: destination');
-    return {
-      destination: req.body.destination,
-    };
-  }));
-
-  app.post('/actions/craft', requireBot, enqueueAction('craftItem', (req) => {
-    if (!req.body.name) throw new Error('Required: name');
-    return {
-      name: req.body.name,
-      count: parsePositiveInt(req.body.count, 1),
-      useCraftingTable: req.body.useCraftingTable === true,
-    };
-  }));
-
-  app.post('/actions/consume', requireBot, enqueueAction('consume', () => ({})));
-
-  app.post('/actions/toss', requireBot, enqueueAction('tossItem', (req) => {
-    if (!req.body.name) throw new Error('Required: name');
-    return {
-      name: req.body.name,
-      count: parsePositiveInt(req.body.count, 1),
-    };
-  }));
-
-  app.post('/actions/hotbar', requireBot, enqueueAction('setHotbarSlot', (req) => {
-    const slot = parseNonNegativeInt(req.body.slot);
-    if (slot === undefined || slot > 8) throw new Error('Invalid slot: must be 0-8');
-    return { slot };
-  }));
-
-  app.post('/actions/creative', requireBot, enqueueAction('creativeItem', (req) => {
-    if (!req.body.name) throw new Error('Required: name');
-    return {
-      name: req.body.name,
-      count: parsePositiveInt(req.body.count, 1),
-      slot: parsePositiveInt(req.body.slot, 36),
-    };
-  }));
-
-  // =====================================================
-  // Stop (immediate, bypass queue)
-  // =====================================================
-  app.post('/actions/stop', requireBot, async (req, res) => {
+  reg('POST', '/actions/stop', 'navigation', '', async (req, res) => {
     try {
       jobQueue.cancelAll();
       const result = await actions.immediateActions.stop();
@@ -275,14 +145,103 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
     }
   });
 
-  // =====================================================
-  // Job status
-  // =====================================================
-  app.get('/jobs/:id', (req, res) => {
+  // Chat
+  reg('POST', '/actions/chat', 'chat', '{ message }', enqueueAction('chat', (req) => {
+    if (!req.body.message) throw new Error('Required: message');
+    return { message: req.body.message };
+  }));
+
+  reg('POST', '/actions/whisper', 'chat', '{ player, message }', enqueueAction('whisper', (req) => {
+    if (!req.body.player) throw new Error('Required: player');
+    if (!req.body.message) throw new Error('Required: message');
+    return { player: req.body.player, message: req.body.message };
+  }));
+
+  // Combat
+  reg('POST', '/actions/attack', 'combat', '{ name?, id? }', enqueueAction('attack', (req) => {
+    if (!req.body.name && req.body.id === undefined) throw new Error('Required: name or id');
+    return { name: req.body.name, id: parsePositiveInt(req.body.id) };
+  }));
+
+  reg('POST', '/actions/protect', 'combat', '{ player, radius? }', enqueueAction('protect', (req) => {
+    if (!req.body.player) throw new Error('Required: player');
+    return { player: req.body.player, radius: parseOptionalNumber(req.body.radius, 10) };
+  }));
+
+  // World
+  reg('POST', '/actions/dig', 'world', '{ name } or { x, y, z }', enqueueAction('digBlock', (req) => {
+    const p = { name: req.body.name, maxDistance: parsePositiveInt(req.body.maxDistance) };
+    if (req.body.x !== undefined) p.x = parseRequiredNumber(req.body.x, 'x');
+    if (req.body.y !== undefined) p.y = parseRequiredNumber(req.body.y, 'y');
+    if (req.body.z !== undefined) p.z = parseRequiredNumber(req.body.z, 'z');
+    return p;
+  }));
+
+  reg('POST', '/actions/collect', 'world', '{ name, count?, maxDistance? }', enqueueAction('collectBlock', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return { name: req.body.name, count: parsePositiveInt(req.body.count), maxDistance: parsePositiveInt(req.body.maxDistance) };
+  }));
+
+  reg('POST', '/actions/activate-block', 'world', '{ x, y, z }', enqueueAction('activateBlock', (req) => ({
+    x: parseRequiredNumber(req.body.x, 'x'),
+    y: parseRequiredNumber(req.body.y, 'y'),
+    z: parseRequiredNumber(req.body.z, 'z'),
+  })));
+
+  reg('POST', '/actions/place-block', 'world', '{ x, y, z, name }', enqueueAction('placeBlock', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return {
+      name: req.body.name,
+      x: parseRequiredNumber(req.body.x, 'x'),
+      y: parseRequiredNumber(req.body.y, 'y'),
+      z: parseRequiredNumber(req.body.z, 'z'),
+    };
+  }));
+
+  reg('POST', '/actions/build-house', 'world', '{ material? }', enqueueAction('buildHouse', (req) => ({
+    material: req.body.material || 'oak_planks',
+  })));
+
+  // Items
+  reg('POST', '/actions/equip', 'items', '{ name, destination? }', enqueueAction('equipItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return { name: req.body.name, destination: req.body.destination || 'hand' };
+  }));
+
+  reg('POST', '/actions/unequip', 'items', '{ destination }', enqueueAction('unequipItem', (req) => {
+    if (!req.body.destination) throw new Error('Required: destination');
+    return { destination: req.body.destination };
+  }));
+
+  reg('POST', '/actions/craft', 'items', '{ name, count?, useCraftingTable? }', enqueueAction('craftItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return { name: req.body.name, count: parsePositiveInt(req.body.count, 1), useCraftingTable: req.body.useCraftingTable === true };
+  }));
+
+  reg('POST', '/actions/consume', 'items', '', enqueueAction('consume', () => ({})));
+
+  reg('POST', '/actions/toss', 'items', '{ name, count? }', enqueueAction('tossItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return { name: req.body.name, count: parsePositiveInt(req.body.count, 1) };
+  }));
+
+  reg('POST', '/actions/hotbar', 'items', '{ slot }', enqueueAction('setHotbarSlot', (req) => {
+    const slot = parseNonNegativeInt(req.body.slot);
+    if (slot === undefined || slot > 8) throw new Error('Invalid slot: must be 0-8');
+    return { slot };
+  }));
+
+  reg('POST', '/actions/creative', 'items', '{ name, count?, slot? }', enqueueAction('creativeItem', (req) => {
+    if (!req.body.name) throw new Error('Required: name');
+    return { name: req.body.name, count: parsePositiveInt(req.body.count, 1), slot: parsePositiveInt(req.body.slot, 36) };
+  }));
+
+  // Jobs
+  reg('GET', '/jobs/:id', 'jobs', '', (req, res) => {
     const job = jobQueue.getJob(req.params.id);
     if (!job) return res.status(404).json({ ok: false, error: 'Job not found' });
     res.json({ ok: true, data: job });
-  });
+  }, true);
 
   // =====================================================
   // List of all endpoints (help)
@@ -290,47 +249,7 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   app.get('/', (req, res) => {
     res.json({
       ok: true,
-      data: {
-        read_only: [
-          'GET /health',
-          'GET /status',
-          'GET /position',
-          'GET /inventory',
-          'GET /nearby[?radius=32]',
-          'GET /scan-blocks[?radius=8]',
-          'GET /findblock?name=oak_log[&maxDistance=32&count=1]',
-        ],
-        navigation: [
-          'POST /actions/goto        { x, y, z }',
-          'POST /actions/follow      { player, distance? }',
-          'POST /actions/stop',
-        ],
-        chat: [
-          'POST /actions/chat        { message }',
-          'POST /actions/whisper     { player, message }',
-        ],
-        combat: [
-          'POST /actions/attack      { name?, id? }',
-          'POST /actions/protect     { player }',
-        ],
-        world: [
-          'POST /actions/dig         { name } or { x, y, z }',
-          'POST /actions/collect     { name, count?, maxDistance? }',
-          'POST /actions/activate-block { x, y, z }',
-          'POST /actions/place-block    { x, y, z, name }',
-        ],
-        items: [
-          'POST /actions/equip       { name, destination? }',
-          'POST /actions/unequip     { destination }',
-          'POST /actions/craft       { name, count?, useCraftingTable? }',
-          'POST /actions/consume',
-          'POST /actions/toss        { name, count? }',
-          'POST /actions/hotbar      { slot }',
-        ],
-        jobs: [
-          'GET /jobs/:id',
-        ],
-      },
+      data: apiDocs,
     });
   });
 
