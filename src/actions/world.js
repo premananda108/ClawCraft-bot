@@ -114,10 +114,10 @@ function createWorldActions(bot) {
       // Use pathfinder to approach if the block is far
       const dist = targetBlock.position.distanceTo(bot.entity.position);
       if (dist > 4.5) {
-        const { goals: { GoalBlock } } = require('mineflayer-pathfinder');
+        const { goals: { GoalNear } } = require('mineflayer-pathfinder');
         const { pathfinderGoto } = require('./navigation-utils');
         const { x, y, z } = targetBlock.position;
-        await pathfinderGoto(bot, new GoalBlock(x, y, z), signal);
+        await pathfinderGoto(bot, new GoalNear(x, y, z, 3), signal);
       }
 
       const blockName = targetBlock.name;
