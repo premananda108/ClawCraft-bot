@@ -194,11 +194,11 @@ function createWorldActions(bot) {
       let referenceBlock = null;
       let faceVector = null;
 
-      const nonSolidBlocks = ['air', 'void_air', 'cave_air', 'water', 'lava', 'short_grass', 'tall_grass', 'fern', 'large_fern', 'dead_bush', 'snow', 'vine', 'glow_lichen'];
+      // Use minecraft-data bounding box instead of hardcoded list — works across all versions
       for (const face of faces) {
         const checkPos = pos.plus(face);
         const b = bot.blockAt(checkPos);
-        if (b && !nonSolidBlocks.includes(b.name)) {
+        if (b && b.boundingBox === 'block') {
           referenceBlock = b;
           faceVector = face.scaled(-1); 
           break;

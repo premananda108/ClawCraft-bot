@@ -30,6 +30,7 @@ const config = {
   bridge: {
     host: process.env.BRIDGE_HOST || '127.0.0.1',
     port: parseIntSafe(process.env.BRIDGE_PORT, 3001),
+    apiKey: process.env.API_KEY || '',  // empty = no auth
   },
 
   // Behaviour

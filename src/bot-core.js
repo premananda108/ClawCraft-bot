@@ -16,6 +16,7 @@ class BotCore extends EventEmitter {
     };
     this._reconnectAttempts = 0;
     this._reconnectTimer = null;
+    this._intentionalDisconnect = false;
   }
 
   /**
@@ -39,11 +40,9 @@ class BotCore extends EventEmitter {
   disconnect() {
     this._clearReconnectTimer();
     this.state.reconnecting = false;
+    this._intentionalDisconnect = true;
 
     if (this.bot) {
-      // Remove listeners before quit to prevent auto-reconnect
-      this.bot.removeAllListeners('end');
-      this.bot.removeAllListeners('kicked');
       if (typeof this.bot.quit === 'function') {
         this.bot.quit();
       }
@@ -141,6 +140,7 @@ class BotCore extends EventEmitter {
 
     // --- Event: kick from server ---
     this.bot.on('kicked', (reason, loggedIn) => {
+      if (this._intentionalDisconnect) return;
       let reasonStr = '';
       if (typeof reason === 'string') {
         reasonStr = reason;
@@ -161,6 +161,10 @@ class BotCore extends EventEmitter {
 
     // --- Event: disconnection ---
     this.bot.on('end', (reason) => {
+      if (this._intentionalDisconnect) {
+        this._intentionalDisconnect = false;
+        return;
+      }
       console.log(`[BotCore] 🔌 Disconnection: ${reason}`);
       this.state.connected = false;
       this.state.spawned = false;

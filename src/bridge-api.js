@@ -14,6 +14,20 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
   const app = express();
   app.use(express.json());
 
+  // --- Middleware: optional API key authentication ---
+  if (config.bridge.apiKey) {
+    app.use((req, res, next) => {
+      // Allow /health without auth for monitoring
+      if (req.path === '/health') return next();
+      const key = req.headers['x-api-key'];
+      if (key !== config.bridge.apiKey) {
+        return res.status(401).json({ ok: false, error: 'Invalid or missing x-api-key' });
+      }
+      next();
+    });
+    console.log('[Bridge API] 🔑 API key authentication enabled');
+  }
+
   // --- Middleware: check if bot is connected ---
   function requireBot(req, res, next) {
     if (!botCore.isReady()) {
@@ -26,11 +40,11 @@ function createBridgeAPI({ config, botCore, jobQueue, actions }) {
     next();
   }
 
-  // --- Helper for read-only calls ---
+  // --- Helper for read-only calls (async-safe) ---
   function safeCall(fn) {
-    return (req, res) => {
+    return async (req, res) => {
       try {
-        const result = fn(req);
+        const result = await fn(req);
         res.json({ ok: true, data: result });
       } catch (err) {
         res.status(400).json({ ok: false, error: err.message });

@@ -1,6 +1,6 @@
 {
   "name": "clawcraft-bot",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "description": "Safe local Minecraft bot with high-level actions and bridge API for OpenClaw",
   "main": "server.js",
   "type": "commonjs",
@@ -18,7 +18,7 @@
   "author": "Premananda",
   "license": "MIT",
   "engines": {
-    "node": ">=22"
+    "node": ">=20"
   },
   "dependencies": {
     "dotenv": "^16.4.0",

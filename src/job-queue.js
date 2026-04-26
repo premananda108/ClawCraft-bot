@@ -159,6 +159,7 @@ class JobQueue {
 
     const timeoutMs = TIMEOUTS[job.action] !== undefined ? TIMEOUTS[job.action] : 30000;
 
+    let timeoutTimer = null;
     try {
       let result;
       if (timeoutMs === null) {
@@ -166,16 +167,17 @@ class JobQueue {
         result = await job._executorFn(job.params, abortController.signal);
       } else {
         const timeoutPromise = new Promise((_, reject) => {
-          const timer = setTimeout(
+          timeoutTimer = setTimeout(
             () => reject(new Error(`Action ${job.action} timed out (${timeoutMs / 1000}s)`)),
             timeoutMs
           );
-          abortController.signal.addEventListener('abort', () => clearTimeout(timer));
+          abortController.signal.addEventListener('abort', () => clearTimeout(timeoutTimer));
         });
         result = await Promise.race([
           job._executorFn(job.params, abortController.signal),
           timeoutPromise,
         ]);
+        clearTimeout(timeoutTimer); // Clear timer on success — prevent orphan timers in event loop
       }
 
       job.result = result;
