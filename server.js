@@ -2,15 +2,6 @@
  * server.js — Entry point: launches bot + bridge API
  */
 
-// mineflayer calls console.warn() directly (not process.emitWarning) when a plugin
-// subscribes to the deprecated 'physicTick' event. We filter only that specific message.
-const _origWarn = console.warn;
-console.warn = function (...args) {
-  if (typeof args[0] === 'string' && args[0].includes("'physicTick' is deprecated")) return;
-  _origWarn.apply(console, args);
-};
-// ============================================================================
-
 const config = require('./src/config');
 const BotCore = require('./src/bot-core');
 const { loadPlugins } = require('./src/plugins');
@@ -54,6 +45,11 @@ async function main() {
 
   botCore.on('ended', ({ reason }) => {
     console.log(`[Server] 🔌 Bot disconnected: ${reason}`);
+    jobQueue.cancelAll();
+  });
+
+  botCore.on('death', () => {
+    console.log('[Server] 💀 Bot died, cancelling all jobs');
     jobQueue.cancelAll();
   });
 

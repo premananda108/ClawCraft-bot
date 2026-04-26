@@ -34,6 +34,11 @@ function ensureMovements(bot) {
   const movements = new Movements(bot);
   movements.canOpenDoors = false;
   bot.pathfinder.setMovements(movements);
+
+  // Reduce synchronous A* calculation time per tick (default ~40ms → 15ms)
+  bot.pathfinder.tickTimeout = 15;
+  // Fail fast if path is too complex — prevents 5+ second hangs
+  bot.pathfinder.thinkTimeout = 3000;
 }
 
 async function pathfinderGoto(bot, goal, signal) {

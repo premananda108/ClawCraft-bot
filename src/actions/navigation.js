@@ -49,6 +49,7 @@ function createNavigationActions(bot) {
      */
     async followPlayer(params, signal) {
       if (!bot) throw new Error('Bot not connected');
+      if (signal?.aborted) throw new Error('Cancelled');
 
       const { player, distance = 3 } = params;
       if (!player) throw new Error('Required: player name');

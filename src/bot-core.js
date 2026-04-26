@@ -94,7 +94,7 @@ class BotCore extends EventEmitter {
     };
 
     let lastValidPos = null;
-    this.bot.on('physicTick', () => {
+    this.bot.on('physicsTick', () => {
       const e = this.bot.entity;
       if (!e || !e.position || !e.velocity) return;
 
@@ -133,6 +133,7 @@ class BotCore extends EventEmitter {
     this.bot.on('death', () => {
       console.log('[BotCore] 💀 Bot died! Waiting for mineflayer auto-respawn...');
       this.state.spawned = false;
+      this.emit('death');
       // Note: We do NOT call bot.respawn() manually because mineflayer does it
       // automatically by default. Calling it twice glitches the server and
       // causes infinite death/respawn loops.

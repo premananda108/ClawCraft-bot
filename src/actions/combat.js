@@ -56,6 +56,7 @@ function createCombatActions(bot) {
      * Attack an entity by name or ID
      */
     async attack(params, signal) {
+      if (signal?.aborted) throw new Error('Cancelled');
       const { name, id } = params;
       let target = null;
 
@@ -81,26 +82,30 @@ function createCombatActions(bot) {
         const MAX_TICKS = 60; // Safety limit: 60 * 500ms = 30s max
         return new Promise((resolve) => {
           let ticks = 0;
+          let resolved = false;
+
+          const finish = (result) => {
+            if (resolved) return;
+            resolved = true;
+            bot.pvp.stop();
+            clearInterval(checkTask);
+            resolve(result);
+          };
+
           const checkTask = setInterval(() => {
             ticks++;
             if (signal?.aborted) {
-              bot.pvp.stop();
-              clearInterval(checkTask);
-              resolve({ attacked: false, target: target.username || target.name, reason: 'cancelled' });
+              finish({ attacked: false, target: target.username || target.name, reason: 'cancelled' });
               return;
             }
             // If the target is dead or has disappeared
             if (!target.isValid || target.health <= 0) {
-              bot.pvp.stop();
-              clearInterval(checkTask);
-              resolve({ attacked: true, target: target.username || target.name, outcome: 'Target defeated' });
+              finish({ attacked: true, target: target.username || target.name, outcome: 'Target defeated' });
               return;
             }
             // Safety: stop if taking too long (target may have escaped)
             if (ticks >= MAX_TICKS) {
-              bot.pvp.stop();
-              clearInterval(checkTask);
-              resolve({ attacked: true, target: target.username || target.name, outcome: 'Combat timed out (target escaped?)' });
+              finish({ attacked: true, target: target.username || target.name, outcome: 'Combat timed out (target escaped?)' });
             }
           }, 500);
         });
@@ -115,6 +120,7 @@ function createCombatActions(bot) {
      * Protect a player
      */
     async protect(params, signal) {
+      if (signal?.aborted) throw new Error('Cancelled');
       const { player: name, radius = 10 } = params;
       targetPlayerName = name;
 
