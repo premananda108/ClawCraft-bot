@@ -120,7 +120,7 @@ async function equipCreative(bot, itemName) {
   
   // In creative, we can just "spawn" the item into the hand slot (36 is hotbar 0)
   await bot.creative.setInventorySlot(36, new Item(itemData.id, 64));
-  await bot.equip(36, 'hand');
+  bot.setQuickBarSlot(0);
 }
 
 
