@@ -2,6 +2,13 @@
  * server.js — Entry point: launches bot + bridge API
  */
 
+// mineflayer-pvp (lib/PVP.js) internally uses the deprecated 'physicTick' event.
+// We can't fix third-party code, so filter this specific warning.
+const _origWarn = console.warn;
+console.warn = function (...args) {
+  if (typeof args[0] === 'string' && args[0].includes('deprecated') && args[0].includes('physicTick')) return;
+  _origWarn.apply(console, args);
+};
 const config = require('./src/config');
 const BotCore = require('./src/bot-core');
 const { loadPlugins } = require('./src/plugins');
